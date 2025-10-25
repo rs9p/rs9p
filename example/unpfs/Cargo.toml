@@ -17,7 +17,7 @@ tokio-stream = { version = "^0.1", features = ["fs"] }
 async-trait = "^0.1"
 futures = "^0.3"
 
-[dependencies.rust-9p]
+[dependencies.rs9p]
 path = "../../"
 
 [profile.release]
