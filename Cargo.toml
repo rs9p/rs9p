@@ -18,7 +18,7 @@ crate-type = ["rlib"]
 [dependencies]
 log = "^0.4"
 num-traits = "^0.2"
-nix = "^0"
+nix = { version = "^0", features = ["fs"]}
 byteorder = "^1.0"
 bitflags = "^1.0"
 enum_primitive = "*"
