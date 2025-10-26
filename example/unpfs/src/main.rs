@@ -3,7 +3,7 @@ use {
     filetime::FileTime,
     nix::libc::{O_CREAT, O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY},
     rs9p::{
-        srv::{srv_async, Fid, Filesystem},
+        srv::{Fid, Filesystem, srv_async},
         *,
     },
     std::{
@@ -16,7 +16,7 @@ use {
         io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt},
         sync::{Mutex, RwLock},
     },
-    tokio_stream::{wrappers::ReadDirStream, StreamExt},
+    tokio_stream::{StreamExt, wrappers::ReadDirStream},
 };
 
 mod utils;

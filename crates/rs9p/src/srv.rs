@@ -47,20 +47,44 @@ impl<T> Fid<T> {
 }
 
 #[async_trait]
-/// Filesystem server trait.
+/// Filesystem server trait for implementing 9P2000.L servers.
 ///
 /// Implementors can represent an error condition by returning an `Err`.
-/// Otherwise, they must return `Fcall` with the required fields filled.
+/// Otherwise, they must return the appropriate `Fcall` response with required fields.
 ///
-/// The default implementation, returning EOPNOTSUPP error, is provided to the all methods
-/// except Rversion.
-/// The default implementation of Rversion returns a message accepting 9P2000.L.
+/// # Error Handling
+/// All methods should return `Err(error::Error::No(errno))` to send an error to the client.
+/// Common errno values include:
+/// - `ENOENT` - File not found
+/// - `EACCES` - Permission denied
+/// - `EISDIR` - Is a directory (when file expected)
+/// - `ENOTDIR` - Not a directory (when directory expected)
 ///
-/// # NOTE
-/// Defined as `Srv` in 9p.h of Plan 9.
+/// # Example
+/// ```no_run
+/// use std::path::PathBuf;
 ///
-/// # Protocol
-/// 9P2000.L
+/// use rs9p::{error, srv::{Filesystem, Fid}, fcall::Fcall};
+/// use async_trait::async_trait;
+///
+/// struct MyFs;
+/// type Result<T> = ::std::result::Result<T, error::Error>;
+///
+/// #[async_trait]
+/// impl Filesystem for MyFs {
+///     type Fid = PathBuf;
+///
+///     async fn rattach(&self,
+///                      fid: &Fid<Self::Fid>,
+///                      afid: Option<&Fid<Self::Fid>>,
+///                      uname: &str,
+///                      aname: &str,
+///                      n_uname: u32,
+/// ) -> Result<Fcall> {
+///         todo!("implementation")
+///     }
+/// }
+/// ```
 pub trait Filesystem: Send {
     /// User defined fid type to be associated with a client's fid.
     type Fid: Send + Sync + Default;
@@ -277,6 +301,7 @@ where
     let response = {
         let fids = fsfids.read().await;
         let get_fid = |fid: &u32| fids.get(fid).ok_or(error::Error::No(EBADF));
+        let get_newfid = || newfid.as_ref().ok_or(error::Error::No(EPROTO));
 
         let fut = match msg.body {
             Tstatfs { fid }                                                     => fs.rstatfs(get_fid(&fid)?),
@@ -288,7 +313,7 @@ where
             Treadlink { fid }                                                   => fs.rreadlink(get_fid(&fid)?),
             Tgetattr { fid, ref req_mask }                                      => fs.rgetattr(get_fid(&fid)?, *req_mask),
             Tsetattr { fid, ref valid, ref stat }                               => fs.rsetattr(get_fid(&fid)?, *valid, stat),
-            Txattrwalk { fid, newfid: _, ref name }                             => fs.rxattrwalk(get_fid(&fid)?, newfid.as_ref().unwrap(), name),
+            Txattrwalk { fid, newfid: _, ref name }                             => fs.rxattrwalk(get_fid(&fid)?, get_newfid()?, name),
             Txattrcreate { fid, ref name, ref attr_size, ref flags }            => fs.rxattrcreate(get_fid(&fid)?, name, *attr_size, *flags),
             Treaddir { fid, ref offset, ref count }                             => fs.rreaddir(get_fid(&fid)?, *offset, *count),
             Tfsync { fid }                                                      => fs.rfsync(get_fid(&fid)?),
@@ -298,11 +323,11 @@ where
             Tmkdir { dfid, ref name, ref mode, ref gid }                        => fs.rmkdir(get_fid(&dfid)?, name, *mode, *gid),
             Trenameat { olddirfid, ref oldname, newdirfid, ref newname }        => fs.rrenameat(get_fid(&olddirfid)?, oldname, get_fid(&newdirfid)?, newname),
             Tunlinkat { dirfd, ref name, ref flags }                            => fs.runlinkat(get_fid(&dirfd)?, name, *flags) ,
-            Tauth { afid: _, ref uname, ref aname, ref n_uname }                => fs.rauth(newfid.as_ref().unwrap(), uname, aname, *n_uname),
-            Tattach { fid: _, afid: _, ref uname, ref aname, ref n_uname }      => fs.rattach(newfid.as_ref().unwrap(), None, uname, aname, *n_uname),
+            Tauth { afid: _, ref uname, ref aname, ref n_uname }                => fs.rauth(get_newfid()?, uname, aname, *n_uname),
+            Tattach { fid: _, afid: _, ref uname, ref aname, ref n_uname }      => fs.rattach(get_newfid()?, None, uname, aname, *n_uname),
             Tversion { ref msize, ref version }                                 => fs.rversion(*msize, version),
             Tflush { oldtag: _ }                                                => fs.rflush(None),
-            Twalk { fid, newfid: _, ref wnames }                                => fs.rwalk(get_fid(&fid)?, newfid.as_ref().unwrap(), wnames),
+            Twalk { fid, newfid: _, ref wnames }                                => fs.rwalk(get_fid(&fid)?, get_newfid()?, wnames),
             Tread { fid, ref offset, ref count }                                => fs.rread(get_fid(&fid)?, *offset, *count),
             Twrite { fid, ref offset, ref data }                                => fs.rwrite(get_fid(&fid)?, *offset, data),
             Tclunk { fid }                                                      => fs.rclunk(get_fid(&fid)?),
@@ -375,14 +400,18 @@ where
                 };
 
                 let mut writer = bytes::BytesMut::with_capacity(4096).writer();
-                serialize::write_msg(&mut writer, &response).unwrap();
+                if let Err(e) = serialize::write_msg(&mut writer, &response) {
+                    error!("Failed to serialize response for tag {}: {:?}", msg.tag, e);
+                    return;
+                }
 
+                let frozen = writer.into_inner().freeze();
                 {
                     let mut framedwrite_locked = framedwrite.lock().await;
-                    framedwrite_locked
-                        .send(writer.into_inner().freeze())
-                        .await
-                        .unwrap();
+                    if let Err(e) = framedwrite_locked.send(frozen).await {
+                        error!("Failed to send response for tag {}: {:?}", msg.tag, e);
+                        return;
+                    }
                 }
                 info!("\t→ {:?}", response);
             }
@@ -442,7 +471,12 @@ impl std::ops::DerefMut for DeleteOnDrop {
 impl Drop for DeleteOnDrop {
     fn drop(&mut self) {
         // There's no way to return a useful error here
-        std::fs::remove_file(&self.path).unwrap();
+        if let Err(e) = std::fs::remove_file(&self.path) {
+            eprintln!(
+                "Warning: Failed to remove socket file {:?}: {}",
+                self.path, e
+            );
+        }
     }
 }
 
@@ -450,37 +484,57 @@ pub async fn srv_async_unix<Fs>(filesystem: Fs, addr: impl AsRef<Path>) -> Resul
 where
     Fs: 'static + Filesystem + Send + Sync + Clone,
 {
+    use tokio::signal::unix::{SignalKind, signal};
+
     let listener = DeleteOnDrop::bind(addr)?;
+
+    let mut sigterm = signal(SignalKind::terminate())?;
+    let mut sigint = signal(SignalKind::interrupt())?;
+
     let running = Arc::new(std::sync::atomic::AtomicBool::new(true));
 
     {
         let running = running.clone();
+
         tokio::spawn(async move {
-            tokio::signal::ctrl_c().await.unwrap();
+            tokio::select! {
+                _ = sigterm.recv() => {
+                    info!("Received SIGTERM, shutting down gracefully");
+                }
+                _ = sigint.recv() => {
+                    info!("Received SIGINT, shutting down gracefully");
+                }
+            }
             running.store(false, Ordering::SeqCst);
         });
     }
 
     while running.load(Ordering::SeqCst) {
-        // Use timeout to periodically check running flag
-        match tokio::time::timeout(std::time::Duration::from_secs(1), listener.accept()).await {
-            Ok(Ok((stream, peer))) => {
-                info!("accepted: {:?}", peer);
+        tokio::select! {
+            result = listener.accept() => {
+                match result {
+                    Ok((stream, peer)) => {
+                        info!("accepted: {:?}", peer);
 
-                let fs = filesystem.clone();
-                tokio::spawn(async move {
-                    let (readhalf, writehalf) = tokio::io::split(stream);
-                    let res = dispatch(fs, readhalf, writehalf).await;
-                    if let Err(e) = res {
-                        error!("Error: {:?}", e);
+                        let fs = filesystem.clone();
+                        tokio::spawn(async move {
+                            let (readhalf, writehalf) = tokio::io::split(stream);
+                            let res = dispatch(fs, readhalf, writehalf).await;
+                            if let Err(e) = res {
+                                error!("Error: {:?}", e);
+                            }
+                        });
                     }
-                });
+                    Err(e) => return Err(e.into()),
+                }
             }
-            Ok(Err(e)) => return Err(e.into()),
-            Err(_) => continue, // Timeout, check running flag again
+            _ = tokio::time::sleep(std::time::Duration::from_millis(100)) => {
+                // Allow the server to check the running flag
+            }
         }
     }
 
+    info!("Server shutdown complete");
     Ok(())
 }
 
