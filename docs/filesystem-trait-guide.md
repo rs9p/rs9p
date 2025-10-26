@@ -6,7 +6,7 @@ A comprehensive guide to implementing the `Filesystem` trait for building 9P2000
 
 - [Overview](#overview)
 - [Quick Start](#quick-start)
-- [Fid Management](#fid-management)
+- [FId Management](#fid-management)
 - [Method Reference](#method-reference)
 - [Error Handling](#error-handling)
 - [Best Practices](#best-practices)
@@ -17,9 +17,9 @@ A comprehensive guide to implementing the `Filesystem` trait for building 9P2000
 
 The `Filesystem` trait is the core interface for implementing 9P2000.L servers. Each method corresponds to a protocol operation:
 
-- **Client sends**: `Tattach` (T = Transmit)
+- **Client sends**: `TAttach` (T = Transmit)
 - **Server calls**: `rattach` (r = response)
-- **Server returns**: `Rattach` (R = Response)
+- **Server returns**: `RAttach` (R = Response)
 
 ### Architecture
 
@@ -47,30 +47,30 @@ The `Filesystem` trait is the core interface for implementing 9P2000.L servers. 
 ### Minimal Example
 
 ```rust
-use rs9p::{srv::{Filesystem, Fid, srv_async}, Result, Fcall, Qid, QidType};
+use rs9p::{srv::{Filesystem, FId, srv_async}, Result, FCall, QId, QIdType};
 use async_trait::async_trait;
 
 #[derive(Clone)]
 struct MyFs;
 
 #[derive(Default)]
-struct MyFid;
+struct MyFId;
 
 #[async_trait]
 impl Filesystem for MyFs {
-    type Fid = MyFid;
+    type FId = MyFId;
 
     async fn rattach(
         &self,
-        _fid: &Fid<Self::Fid>,
-        _afid: Option<&Fid<Self::Fid>>,
+        _fid: &FId<Self::FId>,
+        _afid: Option<&FId<Self::FId>>,
         _uname: &str,
         _aname: &str,
         _n_uname: u32,
-    ) -> Result<Fcall> {
-        Ok(Fcall::Rattach {
-            qid: Qid {
-                typ: QidType::DIR,
+    ) -> Result<FCall> {
+        Ok(FCall::RAttach {
+            qid: QId {
+                typ: QIdType::DIR,
                 version: 0,
                 path: 0,
             }
@@ -93,30 +93,30 @@ use std::path::PathBuf;
 use tokio::sync::RwLock;
 
 #[derive(Default)]
-struct MyFid {
+struct MyFId {
     path: RwLock<PathBuf>,
     // Add file handles, permissions, etc.
 }
 
 #[async_trait]
 impl Filesystem for MyFs {
-    type Fid = MyFid;
+    type FId = MyFId;
 
     async fn rattach(
         &self,
-        fid: &Fid<Self::Fid>,
-        _afid: Option<&Fid<Self::Fid>>,
+        fid: &FId<Self::FId>,
+        _afid: Option<&FId<Self::FId>>,
         _uname: &str,
         _aname: &str,
         _n_uname: u32,
-    ) -> Result<Fcall> {
+    ) -> Result<FCall> {
         // Initialize fid state
         let mut path = fid.aux.path.write().await;
         *path = PathBuf::from("/");
 
-        Ok(Fcall::Rattach {
-            qid: Qid {
-                typ: QidType::DIR,
+        Ok(FCall::RAttach {
+            qid: QId {
+                typ: QIdType::DIR,
                 version: 0,
                 path: 0,
             }
@@ -125,49 +125,49 @@ impl Filesystem for MyFs {
 }
 ```
 
-## Fid Management
+## FId Management
 
-### What is a Fid?
+### What is a FId?
 
 A **fid** (file identifier) is a 32-bit handle the client uses to reference files or directories. Think of it like a file descriptor, but at the protocol level.
 
-### Fid Lifecycle
+### FId Lifecycle
 
 ```rust
 // 1. Client attaches (creates root fid)
-Tattach { fid: 0, ... } → rattach() → Rattach { qid }
+TAttach { fid: 0, ... } → rattach() → RAttach { qid }
 
 // 2. Client walks to a file (creates new fid)
-Twalk { fid: 0, newfid: 1, wnames: ["etc", "passwd"] }
-  → rwalk() → Rwalk { wqids: [...] }
+TWalk { fid: 0, newfid: 1, wnames: ["etc", "passwd"] }
+  → rwalk() → RWalk { wqids: [...] }
 
 // 3. Client opens the file
-Tlopen { fid: 1, flags: O_RDONLY } → rlopen() → Rlopen { qid, iounit }
+TlOpen { fid: 1, flags: O_RDONLY } → rlopen() → RlOpen { qid, iounit }
 
 // 4. Client reads the file
-Tread { fid: 1, offset: 0, count: 4096 } → rread() → Rread { data }
+TRead { fid: 1, offset: 0, count: 4096 } → rread() → RRead { data }
 
 // 5. Client closes the file
-Tclunk { fid: 1 } → rclunk() → Rclunk
+TClunk { fid: 1 } → rclunk() → RClunk
 // Server automatically removes fid 1 after rclunk returns
 ```
 
 ### Important Invariants
 
-1. **Fid uniqueness**: Each fid is unique per connection
-2. **Fid persistence**: Fids remain valid until clunked
+1. **FId uniqueness**: Each fid is unique per connection
+2. **FId persistence**: FIds remain valid until clunked
 3. **Walk creates new fid**: Original fid is unchanged
-4. **Auto-cleanup**: Server removes fid after successful `Tclunk`
+4. **Auto-cleanup**: Server removes fid after successful `TClunk`
 
 ### Concurrency
 
 - Multiple methods may run concurrently
 - Same fid may be accessed from different tasks
-- Use `RwLock` or `Mutex` in your `Fid` type for thread safety
+- Use `RwLock` or `Mutex` in your `FId` type for thread safety
 
 ```rust
 #[derive(Default)]
-struct MyFid {
+struct MyFId {
     path: RwLock<PathBuf>,      // Multiple readers, one writer
     file: Mutex<Option<File>>,   // Exclusive access needed
 }
@@ -182,12 +182,12 @@ struct MyFid {
 ```rust
 async fn rattach(
     &self,
-    fid: &Fid<Self::Fid>,
-    afid: Option<&Fid<Self::Fid>>,
+    fid: &FId<Self::FId>,
+    afid: Option<&FId<Self::FId>>,
     uname: &str,
     aname: &str,
     n_uname: u32,
-) -> Result<Fcall>
+) -> Result<FCall>
 ```
 
 **Purpose**: Initialize connection and establish root fid.
@@ -199,19 +199,19 @@ async fn rattach(
 - `aname`: Name of filesystem to attach (can be used for multiple exports)
 - `n_uname`: Numeric user ID
 
-**Returns**: `Rattach { qid }` with root directory's qid
+**Returns**: `RAttach { qid }` with root directory's qid
 
 **Example**:
 ```rust
-async fn rattach(&self, fid: &Fid<Self::Fid>, ...) -> Result<Fcall> {
+async fn rattach(&self, fid: &FId<Self::FId>, ...) -> Result<FCall> {
     // Initialize root fid
     let mut path = fid.aux.path.write().await;
     *path = self.root_path.clone();
 
     // Return root qid
-    Ok(Fcall::Rattach {
-        qid: Qid {
-            typ: QidType::DIR,
+    Ok(FCall::RAttach {
+        qid: QId {
+            typ: QIdType::DIR,
             version: 0,
             path: 0,  // Root inode
         }
@@ -224,10 +224,10 @@ async fn rattach(&self, fid: &Fid<Self::Fid>, ...) -> Result<Fcall> {
 ```rust
 async fn rwalk(
     &self,
-    fid: &Fid<Self::Fid>,
-    newfid: &Fid<Self::Fid>,
+    fid: &FId<Self::FId>,
+    newfid: &FId<Self::FId>,
     wnames: &[String],
-) -> Result<Fcall>
+) -> Result<FCall>
 ```
 
 **Purpose**: Walk from `fid` through path components in `wnames`, creating `newfid`.
@@ -237,7 +237,7 @@ async fn rwalk(
 - `newfid`: New fid to create (initialize `newfid.aux`)
 - `wnames`: Path components to traverse (e.g., `["dir", "subdir", "file"]`)
 
-**Returns**: `Rwalk { wqids }` with qid for each successfully traversed component
+**Returns**: `RWalk { wqids }` with qid for each successfully traversed component
 
 **Special Cases**:
 - `wnames` is empty: Clone `fid` to `newfid`
@@ -246,7 +246,7 @@ async fn rwalk(
 
 **Example**:
 ```rust
-async fn rwalk(&self, fid: &Fid<Self::Fid>, newfid: &Fid<Self::Fid>, wnames: &[String]) -> Result<Fcall> {
+async fn rwalk(&self, fid: &FId<Self::FId>, newfid: &FId<Self::FId>, wnames: &[String]) -> Result<FCall> {
     let mut current_path = {
         let path = fid.aux.path.read().await;
         path.clone()
@@ -273,7 +273,7 @@ async fn rwalk(&self, fid: &Fid<Self::Fid>, newfid: &Fid<Self::Fid>, wnames: &[S
     let mut newfid_path = newfid.aux.path.write().await;
     *newfid_path = current_path;
 
-    Ok(Fcall::Rwalk { wqids })
+    Ok(FCall::RWalk { wqids })
 }
 ```
 
@@ -282,20 +282,20 @@ async fn rwalk(&self, fid: &Fid<Self::Fid>, newfid: &Fid<Self::Fid>, wnames: &[S
 #### `rlopen` - Open File
 
 ```rust
-async fn rlopen(&self, fid: &Fid<Self::Fid>, flags: u32) -> Result<Fcall>
+async fn rlopen(&self, fid: &FId<Self::FId>, flags: u32) -> Result<FCall>
 ```
 
 **Purpose**: Open the file referenced by `fid` with specified flags.
 
 **Parameters**:
-- `fid`: Fid representing the file to open
+- `fid`: FId representing the file to open
 - `flags`: Open flags (O_RDONLY, O_WRONLY, O_RDWR, O_TRUNC, etc.)
 
-**Returns**: `Rlopen { qid, iounit }` where iounit is max I/O size (0 = no limit)
+**Returns**: `RlOpen { qid, iounit }` where iounit is max I/O size (0 = no limit)
 
 **Example**:
 ```rust
-async fn rlopen(&self, fid: &Fid<Self::Fid>, flags: u32) -> Result<Fcall> {
+async fn rlopen(&self, fid: &FId<Self::FId>, flags: u32) -> Result<FCall> {
     let path = fid.aux.path.read().await.clone();
 
     // Open the file
@@ -313,14 +313,14 @@ async fn rlopen(&self, fid: &Fid<Self::Fid>, flags: u32) -> Result<Fcall> {
     let metadata = tokio::fs::metadata(&path).await?;
     let qid = qid_from_metadata(&metadata);
 
-    Ok(Fcall::Rlopen { qid, iounit: 0 })
+    Ok(FCall::RlOpen { qid, iounit: 0 })
 }
 ```
 
 #### `rread` - Read from File
 
 ```rust
-async fn rread(&self, fid: &Fid<Self::Fid>, offset: u64, count: u32) -> Result<Fcall>
+async fn rread(&self, fid: &FId<Self::FId>, offset: u64, count: u32) -> Result<FCall>
 ```
 
 **Purpose**: Read data from file.
@@ -330,11 +330,11 @@ async fn rread(&self, fid: &Fid<Self::Fid>, offset: u64, count: u32) -> Result<F
 - `offset`: Byte offset to start reading
 - `count`: Maximum bytes to read
 
-**Returns**: `Rread { data }` with actual data read
+**Returns**: `RRead { data }` with actual data read
 
 **Example**:
 ```rust
-async fn rread(&self, fid: &Fid<Self::Fid>, offset: u64, count: u32) -> Result<Fcall> {
+async fn rread(&self, fid: &FId<Self::FId>, offset: u64, count: u32) -> Result<FCall> {
     let mut file = fid.aux.file.lock().await;
     let file = file.as_mut().ok_or(error::Error::No(EBADF))?;
 
@@ -346,14 +346,14 @@ async fn rread(&self, fid: &Fid<Self::Fid>, offset: u64, count: u32) -> Result<F
     let n = file.read(&mut buf).await?;
     buf.truncate(n);
 
-    Ok(Fcall::Rread { data: Data(buf) })
+    Ok(FCall::RRead { data: Data(buf) })
 }
 ```
 
 #### `rwrite` - Write to File
 
 ```rust
-async fn rwrite(&self, fid: &Fid<Self::Fid>, offset: u64, data: &Data) -> Result<Fcall>
+async fn rwrite(&self, fid: &FId<Self::FId>, offset: u64, data: &Data) -> Result<FCall>
 ```
 
 **Purpose**: Write data to file.
@@ -363,25 +363,25 @@ async fn rwrite(&self, fid: &Fid<Self::Fid>, offset: u64, data: &Data) -> Result
 - `offset`: Byte offset to start writing
 - `data`: Data to write
 
-**Returns**: `Rwrite { count }` with number of bytes actually written
+**Returns**: `RWrite { count }` with number of bytes actually written
 
 **Example**:
 ```rust
-async fn rwrite(&self, fid: &Fid<Self::Fid>, offset: u64, data: &Data) -> Result<Fcall> {
+async fn rwrite(&self, fid: &FId<Self::FId>, offset: u64, data: &Data) -> Result<FCall> {
     let mut file = fid.aux.file.lock().await;
     let file = file.as_mut().ok_or(error::Error::No(EBADF))?;
 
     file.seek(SeekFrom::Start(offset)).await?;
     let count = file.write(&data.0).await? as u32;
 
-    Ok(Fcall::Rwrite { count })
+    Ok(FCall::RWrite { count })
 }
 ```
 
 #### `rclunk` - Close File
 
 ```rust
-async fn rclunk(&self, fid: &Fid<Self::Fid>) -> Result<Fcall>
+async fn rclunk(&self, fid: &FId<Self::FId>) -> Result<FCall>
 ```
 
 **Purpose**: Close file and clean up resources.
@@ -390,12 +390,12 @@ async fn rclunk(&self, fid: &Fid<Self::Fid>) -> Result<Fcall>
 
 **Example**:
 ```rust
-async fn rclunk(&self, fid: &Fid<Self::Fid>) -> Result<Fcall> {
+async fn rclunk(&self, fid: &FId<Self::FId>) -> Result<FCall> {
     // Clean up resources
     let mut file = fid.aux.file.lock().await;
     *file = None;  // Drop file handle
 
-    Ok(Fcall::Rclunk)
+    Ok(FCall::RClunk)
 }
 ```
 
@@ -404,7 +404,7 @@ async fn rclunk(&self, fid: &Fid<Self::Fid>) -> Result<Fcall> {
 #### `rreaddir` - Read Directory Entries
 
 ```rust
-async fn rreaddir(&self, fid: &Fid<Self::Fid>, offset: u64, count: u32) -> Result<Fcall>
+async fn rreaddir(&self, fid: &FId<Self::FId>, offset: u64, count: u32) -> Result<FCall>
 ```
 
 **Purpose**: Read directory entries.
@@ -414,7 +414,7 @@ async fn rreaddir(&self, fid: &Fid<Self::Fid>, offset: u64, count: u32) -> Resul
 - `offset`: Entry offset (0 = start, use previous entry's offset for continuation)
 - `count`: Maximum bytes to return
 
-**Returns**: `Rreaddir { data }` with directory entry data
+**Returns**: `RReadDir { data }` with directory entry data
 
 **Important**:
 - First call should include `.` and `..` entries
@@ -423,7 +423,7 @@ async fn rreaddir(&self, fid: &Fid<Self::Fid>, offset: u64, count: u32) -> Resul
 
 **Example**:
 ```rust
-async fn rreaddir(&self, fid: &Fid<Self::Fid>, offset: u64, count: u32) -> Result<Fcall> {
+async fn rreaddir(&self, fid: &FId<Self::FId>, offset: u64, count: u32) -> Result<FCall> {
     let mut dirents = DirEntryData::new();
 
     // First entries are . and ..
@@ -460,7 +460,7 @@ async fn rreaddir(&self, fid: &Fid<Self::Fid>, offset: u64, count: u32) -> Resul
         dirents.push(dirent);
     }
 
-    Ok(Fcall::Rreaddir { data: dirents })
+    Ok(FCall::RReadDir { data: dirents })
 }
 ```
 
@@ -469,12 +469,12 @@ async fn rreaddir(&self, fid: &Fid<Self::Fid>, offset: u64, count: u32) -> Resul
 ```rust
 async fn rlcreate(
     &self,
-    fid: &Fid<Self::Fid>,
+    fid: &FId<Self::FId>,
     name: &str,
     flags: u32,
     mode: u32,
     gid: u32,
-) -> Result<Fcall>
+) -> Result<FCall>
 ```
 
 **Purpose**: Create a new file in the directory referenced by `fid`.
@@ -483,7 +483,7 @@ async fn rlcreate(
 
 **Example**:
 ```rust
-async fn rlcreate(&self, fid: &Fid<Self::Fid>, name: &str, flags: u32, mode: u32, gid: u32) -> Result<Fcall> {
+async fn rlcreate(&self, fid: &FId<Self::FId>, name: &str, flags: u32, mode: u32, gid: u32) -> Result<FCall> {
     let parent_path = fid.aux.path.read().await.clone();
     let file_path = parent_path.join(name);
 
@@ -505,7 +505,7 @@ async fn rlcreate(&self, fid: &Fid<Self::Fid>, name: &str, flags: u32, mode: u32
     let metadata = tokio::fs::metadata(&file_path).await?;
     let qid = qid_from_metadata(&metadata);
 
-    Ok(Fcall::Rlcreate { qid, iounit: 0 })
+    Ok(FCall::RlCreate { qid, iounit: 0 })
 }
 ```
 
@@ -514,18 +514,18 @@ async fn rlcreate(&self, fid: &Fid<Self::Fid>, name: &str, flags: u32, mode: u32
 ```rust
 async fn rmkdir(
     &self,
-    fid: &Fid<Self::Fid>,
+    fid: &FId<Self::FId>,
     name: &str,
     mode: u32,
     gid: u32,
-) -> Result<Fcall>
+) -> Result<FCall>
 ```
 
 **Purpose**: Create a directory.
 
 **Example**:
 ```rust
-async fn rmkdir(&self, fid: &Fid<Self::Fid>, name: &str, mode: u32, gid: u32) -> Result<Fcall> {
+async fn rmkdir(&self, fid: &FId<Self::FId>, name: &str, mode: u32, gid: u32) -> Result<FCall> {
     let parent_path = fid.aux.path.read().await.clone();
     let dir_path = parent_path.join(name);
 
@@ -534,7 +534,7 @@ async fn rmkdir(&self, fid: &Fid<Self::Fid>, name: &str, mode: u32, gid: u32) ->
     let metadata = tokio::fs::metadata(&dir_path).await?;
     let qid = qid_from_metadata(&metadata);
 
-    Ok(Fcall::Rmkdir { qid })
+    Ok(FCall::RMkDir { qid })
 }
 ```
 
@@ -543,18 +543,18 @@ async fn rmkdir(&self, fid: &Fid<Self::Fid>, name: &str, mode: u32, gid: u32) ->
 #### `rgetattr` - Get File Attributes
 
 ```rust
-async fn rgetattr(&self, fid: &Fid<Self::Fid>, req_mask: GetattrMask) -> Result<Fcall>
+async fn rgetattr(&self, fid: &FId<Self::FId>, req_mask: GetAttrMask) -> Result<FCall>
 ```
 
 **Purpose**: Get file metadata (like `stat(2)`).
 
 **Example**:
 ```rust
-async fn rgetattr(&self, fid: &Fid<Self::Fid>, req_mask: GetattrMask) -> Result<Fcall> {
+async fn rgetattr(&self, fid: &FId<Self::FId>, req_mask: GetAttrMask) -> Result<FCall> {
     let path = fid.aux.path.read().await.clone();
     let metadata = tokio::fs::symlink_metadata(&path).await?;
 
-    Ok(Fcall::Rgetattr {
+    Ok(FCall::RGetAttr {
         valid: req_mask,
         qid: qid_from_metadata(&metadata),
         stat: Stat::from(&metadata),
@@ -567,10 +567,10 @@ async fn rgetattr(&self, fid: &Fid<Self::Fid>, req_mask: GetattrMask) -> Result<
 ```rust
 async fn rsetattr(
     &self,
-    fid: &Fid<Self::Fid>,
-    valid: SetattrMask,
+    fid: &FId<Self::FId>,
+    valid: SetAttrMask,
     stat: &SetAttr,
-) -> Result<Fcall>
+) -> Result<FCall>
 ```
 
 **Purpose**: Modify file metadata (chmod, chown, truncate, etc.).
@@ -579,14 +579,14 @@ async fn rsetattr(
 
 **Example**:
 ```rust
-async fn rsetattr(&self, fid: &Fid<Self::Fid>, valid: SetattrMask, stat: &SetAttr) -> Result<Fcall> {
+async fn rsetattr(&self, fid: &FId<Self::FId>, valid: SetAttrMask, stat: &SetAttr) -> Result<FCall> {
     let path = fid.aux.path.read().await.clone();
 
-    if valid.contains(SetattrMask::MODE) {
+    if valid.contains(SetAttrMask::MODE) {
         tokio::fs::set_permissions(&path, Permissions::from_mode(stat.mode)).await?;
     }
 
-    if valid.contains(SetattrMask::SIZE) {
+    if valid.contains(SetAttrMask::SIZE) {
         let file = tokio::fs::OpenOptions::new()
             .write(true)
             .open(&path)
@@ -596,7 +596,7 @@ async fn rsetattr(&self, fid: &Fid<Self::Fid>, valid: SetattrMask, stat: &SetAtt
 
     // Handle other fields...
 
-    Ok(Fcall::Rsetattr)
+    Ok(FCall::RSetAttr)
 }
 ```
 
@@ -605,15 +605,15 @@ async fn rsetattr(&self, fid: &Fid<Self::Fid>, valid: SetattrMask, stat: &SetAtt
 #### `rversion` - Protocol Version
 
 ```rust
-async fn rversion(&self, msize: u32, version: &str) -> Result<Fcall>
+async fn rversion(&self, msize: u32, version: &str) -> Result<FCall>
 ```
 
 **Purpose**: Negotiate protocol version and maximum message size.
 
 **Default implementation**:
 ```rust
-async fn rversion(&self, msize: u32, ver: &str) -> Result<Fcall> {
-    Ok(Fcall::Rversion {
+async fn rversion(&self, msize: u32, ver: &str) -> Result<FCall> {
+    Ok(FCall::RVersion {
         msize,
         version: match ver {
             P92000L => ver.to_owned(),
@@ -670,7 +670,7 @@ Err(error::Error::No(EBADF))
 use rs9p::error::Error;
 
 // Automatic conversion
-let result: Result<Fcall> = tokio::fs::read(&path).await.map_err(Error::from)?;
+let result: Result<FCall> = tokio::fs::read(&path).await.map_err(Error::from)?;
 
 // Or use ? directly
 let data = tokio::fs::read(&path).await?;  // Works!
@@ -682,7 +682,7 @@ let data = tokio::fs::read(&path).await?;  // Works!
 
 ```rust
 #[derive(Default)]
-struct MyFid {
+struct MyFId {
     path: RwLock<PathBuf>,     // Multiple readers
     file: Mutex<Option<File>>, // Exclusive access
 }
@@ -691,7 +691,7 @@ struct MyFid {
 ### 2. Validate Path Components
 
 ```rust
-async fn rwalk(&self, ..., wnames: &[String]) -> Result<Fcall> {
+async fn rwalk(&self, ..., wnames: &[String]) -> Result<FCall> {
     for name in wnames {
         // Prevent directory traversal
         if name.contains('/') || name == ".." || name.starts_with('.') {
@@ -706,7 +706,7 @@ async fn rwalk(&self, ..., wnames: &[String]) -> Result<Fcall> {
 
 ```rust
 #[derive(Default)]
-struct MyFid {
+struct MyFId {
     path: RwLock<PathBuf>,
     depth: RwLock<usize>,  // Track directory depth
 }
@@ -720,7 +720,7 @@ if depth > MAX_DEPTH {
 ### 4. Clean Up Resources in rclunk
 
 ```rust
-async fn rclunk(&self, fid: &Fid<Self::Fid>) -> Result<Fcall> {
+async fn rclunk(&self, fid: &FId<Self::FId>) -> Result<FCall> {
     // Close file handles
     let mut file = fid.aux.file.lock().await;
     *file = None;
@@ -729,21 +729,21 @@ async fn rclunk(&self, fid: &Fid<Self::Fid>) -> Result<Fcall> {
     // Release locks
     // etc.
 
-    Ok(Fcall::Rclunk)
+    Ok(FCall::RClunk)
 }
 ```
 
 ### 5. Handle Empty wnames in rwalk
 
 ```rust
-async fn rwalk(&self, fid: &Fid<Self::Fid>, newfid: &Fid<Self::Fid>, wnames: &[String]) -> Result<Fcall> {
+async fn rwalk(&self, fid: &FId<Self::FId>, newfid: &FId<Self::FId>, wnames: &[String]) -> Result<FCall> {
     if wnames.is_empty() {
         // Clone fid to newfid
         let fid_path = fid.aux.path.read().await;
         let mut newfid_path = newfid.aux.path.write().await;
         *newfid_path = fid_path.clone();
 
-        return Ok(Fcall::Rwalk { wqids: vec![] });
+        return Ok(FCall::RWalk { wqids: vec![] });
     }
     // ...
 }
@@ -756,19 +756,19 @@ async fn rwalk(&self, fid: &Fid<Self::Fid>, newfid: &Fid<Self::Fid>, wnames: &[S
 ```rust
 #[async_trait]
 impl Filesystem for ReadOnlyFs {
-    type Fid = MyFid;
+    type FId = MyFId;
 
     // Implement read operations
-    async fn rread(...) -> Result<Fcall> { /* ... */ }
-    async fn rgetattr(...) -> Result<Fcall> { /* ... */ }
-    async fn rreaddir(...) -> Result<Fcall> { /* ... */ }
+    async fn rread(...) -> Result<FCall> { /* ... */ }
+    async fn rgetattr(...) -> Result<FCall> { /* ... */ }
+    async fn rreaddir(...) -> Result<FCall> { /* ... */ }
 
     // Reject write operations
-    async fn rwrite(...) -> Result<Fcall> {
+    async fn rwrite(...) -> Result<FCall> {
         Err(error::Error::No(EROFS))  // Read-only filesystem
     }
 
-    async fn rlcreate(...) -> Result<Fcall> {
+    async fn rlcreate(...) -> Result<FCall> {
         Err(error::Error::No(EROFS))
     }
 
@@ -788,15 +788,15 @@ struct MemFs {
 }
 
 #[derive(Default)]
-struct MemFid {
+struct MemFId {
     inode: RwLock<u64>,
 }
 
 #[async_trait]
 impl Filesystem for MemFs {
-    type Fid = MemFid;
+    type FId = MemFId;
 
-    async fn rread(&self, fid: &Fid<Self::Fid>, offset: u64, count: u32) -> Result<Fcall> {
+    async fn rread(&self, fid: &FId<Self::FId>, offset: u64, count: u32) -> Result<FCall> {
         let inode = *fid.aux.inode.read().await;
         let files = self.files.read().await;
 
@@ -807,7 +807,7 @@ impl Filesystem for MemFs {
         let end = (start + count as usize).min(data.len());
         let slice = &data[start..end];
 
-        Ok(Fcall::Rread {
+        Ok(FCall::RRead {
             data: Data(slice.to_vec())
         })
     }
@@ -824,16 +824,16 @@ struct PassThroughFs {
 }
 
 #[derive(Default)]
-struct PassThroughFid {
+struct PassThroughFId {
     path: RwLock<PathBuf>,
     file: Mutex<Option<tokio::fs::File>>,
 }
 
 #[async_trait]
 impl Filesystem for PassThroughFs {
-    type Fid = PassThroughFid;
+    type FId = PassThroughFId;
 
-    async fn rlopen(&self, fid: &Fid<Self::Fid>, flags: u32) -> Result<Fcall> {
+    async fn rlopen(&self, fid: &FId<Self::FId>, flags: u32) -> Result<FCall> {
         let path = fid.aux.path.read().await;
         let real_path = self.root.join(&*path);
 
@@ -849,7 +849,7 @@ impl Filesystem for PassThroughFs {
         let metadata = tokio::fs::metadata(&real_path).await?;
         let qid = qid_from_metadata(&metadata);
 
-        Ok(Fcall::Rlopen { qid, iounit: 0 })
+        Ok(FCall::RlOpen { qid, iounit: 0 })
     }
 
     // ... forward other operations to real filesystem
@@ -868,7 +868,7 @@ mod tests {
     #[tokio::test]
     async fn test_attach() {
         let fs = MyFs::new();
-        let fid = Fid { fid: 0, aux: MyFid::default() };
+        let fid = FId { fid: 0, aux: MyFId::default() };
 
         let result = fs.rattach(&fid, None, "user", "fs", 1000).await;
         assert!(result.is_ok());
@@ -877,7 +877,7 @@ mod tests {
     #[tokio::test]
     async fn test_read_nonexistent_file() {
         let fs = MyFs::new();
-        let fid = Fid { fid: 1, aux: MyFid::default() };
+        let fid = FId { fid: 1, aux: MyFId::default() };
 
         let result = fs.rread(&fid, 0, 100).await;
         assert!(matches!(result, Err(error::Error::No(EBADF))));
@@ -893,11 +893,11 @@ async fn test_full_workflow() {
     let fs = MyFs::new();
 
     // Attach
-    let root_fid = Fid { fid: 0, aux: MyFid::default() };
+    let root_fid = FId { fid: 0, aux: MyFId::default() };
     fs.rattach(&root_fid, None, "user", "fs", 1000).await.unwrap();
 
     // Walk to file
-    let file_fid = Fid { fid: 1, aux: MyFid::default() };
+    let file_fid = FId { fid: 1, aux: MyFId::default() };
     fs.rwalk(&root_fid, &file_fid, &["file.txt".to_string()]).await.unwrap();
 
     // Open file
@@ -905,7 +905,7 @@ async fn test_full_workflow() {
 
     // Read file
     let result = fs.rread(&file_fid, 0, 100).await.unwrap();
-    assert!(matches!(result, Fcall::Rread { .. }));
+    assert!(matches!(result, FCall::RRead { .. }));
 
     // Clunk file
     fs.rclunk(&file_fid).await.unwrap();
@@ -923,7 +923,7 @@ env_logger::init();
 // In your filesystem:
 use log::{debug, info, warn, error};
 
-async fn rread(&self, fid: &Fid<Self::Fid>, offset: u64, count: u32) -> Result<Fcall> {
+async fn rread(&self, fid: &FId<Self::FId>, offset: u64, count: u32) -> Result<FCall> {
     debug!("rread: fid={}, offset={}, count={}", fid.fid(), offset, count);
     // ...
 }
@@ -933,7 +933,7 @@ async fn rread(&self, fid: &Fid<Self::Fid>, offset: u64, count: u32) -> Result<F
 
 1. **"EBADF on read"**: Did you store the file handle in `rlopen`?
 2. **"Partial walks don't work"**: Check that you handle errors correctly (first must fail, rest can succeed)
-3. **"Fid state is wrong"**: Make sure you're updating both `fid` and `newfid` correctly in `rwalk`
+3. **"FId state is wrong"**: Make sure you're updating both `fid` and `newfid` correctly in `rwalk`
 4. **"Concurrent access hangs"**: Deadlock in locks? Use `RwLock` for reads, minimize lock duration
 
 ## Additional Resources
@@ -947,7 +947,7 @@ async fn rread(&self, fid: &Fid<Self::Fid>, offset: u64, count: u32) -> Result<F
 
 When implementing `Filesystem`:
 
-- [ ] Define your `Fid` associated type with needed state
+- [ ] Define your `FId` associated type with needed state
 - [ ] Implement `rattach` to initialize root fid
 - [ ] Implement `rwalk` with proper fid cloning and path traversal
 - [ ] Implement `rlopen` / `rlcreate` and store file handles

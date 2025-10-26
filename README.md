@@ -14,7 +14,6 @@ Tokio-based asynchronous filesystems library using 9P2000.L protocol, an extende
 
 - **[API Documentation](https://docs.rs/rs9p)** - Full API reference on docs.rs
 - **[Filesystem Trait Guide](docs/filesystem-trait-guide.md)** - Complete guide to implementing custom filesystems
-- **[Maximum Depth Protection](docs/max-depth.md)** - Recursive depth protection to prevent infinite loops
 - **[Documentation Index](docs/README.md)** - All available documentation
 
 ## Quick Start
@@ -31,30 +30,30 @@ tokio = { version = "1", features = ["full"] }
 
 Implement the `Filesystem` trait:
 ```rust
-use rs9p::{srv::{Filesystem, Fid, srv_async}, Result, Fcall, Qid, QidType};
+use rs9p::{srv::{Filesystem, FId, srv_async}, Result, FCall, QId, QIdType};
 use async_trait::async_trait;
 
 #[derive(Clone)]
 struct MyFs;
 
 #[derive(Default)]
-struct MyFid;
+struct MyFId;
 
 #[async_trait]
 impl Filesystem for MyFs {
-    type Fid = MyFid;
+    type FId = MyFId;
 
     async fn rattach(
         &self,
-        _fid: &Fid<Self::Fid>,
-        _afid: Option<&Fid<Self::Fid>>,
+        _fid: &FId<Self::FId>,
+        _afid: Option<&FId<Self::FId>>,
         _uname: &str,
         _aname: &str,
         _n_uname: u32,
-    ) -> Result<Fcall> {
-        Ok(Fcall::Rattach {
-            qid: Qid {
-                typ: QidType::DIR,
+    ) -> Result<FCall> {
+        Ok(FCall::RAttach {
+            qid: QId {
+                typ: QIdType::DIR,
                 version: 0,
                 path: 0,
             }
@@ -131,16 +130,6 @@ sudo mount -t 9p -o version=9p2000.L,trans=tcp,port=564,uname=$USER 127.0.0.1 ./
 
 See [v9fs documentation](https://www.kernel.org/doc/Documentation/filesystems/9p.txt) for more details.
 
-### Security Note
-
-**Important:** If you mount the filesystem inside its own export directory, you can create infinite recursion (e.g., exporting `/home/user` and mounting at `/home/user/mnt` creates `/home/user/mnt/mnt/mnt/...`). Use the `--max-depth` option to prevent this:
-
-```bash
-unpfs --max-depth 100 'tcp!0.0.0.0!564' testdir
-```
-
-See [Maximum Depth Protection](docs/max-depth.md) for details.
-
 ## Protocol Reference
 
 - [Linux Kernel 9P Documentation](https://www.kernel.org/doc/Documentation/filesystems/9p.txt)
@@ -163,7 +152,6 @@ Contributions are welcome! Please:
 - **Memory Safe**: No unsafe code - all operations use safe Rust
 - **Error Handling**: Comprehensive error handling prevents panics
 - **Path Validation**: Implement proper validation to prevent directory traversal
-- **Depth Limits**: Use max-depth to prevent infinite recursion
 - **Authentication**: Default auth returns `EOPNOTSUPP` - implement for production use
 
 See the [Filesystem Trait Guide](docs/filesystem-trait-guide.md) for security best practices.
