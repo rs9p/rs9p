@@ -901,7 +901,7 @@ fn encoder_test1() {
     let expected: Vec<u8> = (0..10).collect();
     let mut encoder = Vec::new();
     for i in 0..10 {
-        (&(i as u8)).encode(&mut encoder).unwrap();
+        (i as u8).encode(&mut encoder).unwrap();
     }
     assert_eq!(expected, encoder);
 }
@@ -913,11 +913,8 @@ fn decoder_test1() {
     let expected: Vec<u8> = (0..10).collect();
     let mut decoder = Cursor::new(expected.clone());
     let mut actual: Vec<u8> = Vec::new();
-    loop {
-        match Decodable::decode(&mut decoder) {
-            Ok(i) => actual.push(i),
-            Err(_) => break,
-        }
+    while let Ok(i) = Decodable::decode(&mut decoder) {
+        actual.push(i);
     }
     assert_eq!(expected, actual);
 }
