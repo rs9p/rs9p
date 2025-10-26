@@ -1,5 +1,6 @@
 [package]
 name = "unpfs"
+description = "An example filesystem built on top of the rs9p library"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
