@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
-members = ["crates/rs9p", "example/unpfs"]
-default-members = ["example/unpfs"]
+members = ["crates/rs9p", "crates/unpfs"]
+default-members = ["crates/unpfs"]
 
 [workspace.dependencies]
 async-trait = "0.1.89"

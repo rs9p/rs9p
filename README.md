@@ -8,8 +8,7 @@ Tokio-based asynchronous filesystems library using 9P2000.L protocol, an extende
 You can build unpfs with the following commands below:
 
 ```bash
-cd example/unpfs/
-cargo build --verbose --release
+cargo build -p unpfs --verbose --release
 ```
 
 and run unpfs with the following command to export `/exportdir`:
