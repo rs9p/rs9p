@@ -11,12 +11,12 @@ macro_rules! INVALID_FID {
     };
 }
 
-pub async fn get_qid<T: AsRef<Path> + ?Sized>(path: &T) -> rs9p::Result<Qid> {
+pub async fn get_qid<T: AsRef<Path> + ?Sized>(path: &T) -> rs9p::Result<QId> {
     Ok(qid_from_attr(&fs::symlink_metadata(path.as_ref()).await?))
 }
 
-pub fn qid_from_attr(attr: &Metadata) -> Qid {
-    Qid {
+pub fn qid_from_attr(attr: &Metadata) -> QId {
+    QId {
         typ: From::from(attr.file_type()),
         version: 0,
         path: attr.ino(),

@@ -38,7 +38,7 @@ fn errno_from_io_error(e: &io::Error) -> nix::errno::Errno {
 
 /// 9P error type which is convertible to an errno.
 ///
-/// The value of `Error::errno()` will be used for Rlerror.
+/// The value of `Error::errno()` will be used for RlError.
 ///
 /// # Protocol
 /// 9P2000.L

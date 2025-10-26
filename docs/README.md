@@ -7,7 +7,6 @@ This directory contains comprehensive documentation for the rs9p library and its
 ### For Users
 
 - **[Filesystem Trait Implementation Guide](filesystem-trait-guide.md)** - Complete guide to implementing the `Filesystem` trait with examples and best practices
-- **[Maximum Depth Protection](max-depth.md)** - Understanding and configuring depth limits to prevent infinite recursion
 
 ### Getting Started
 
@@ -21,30 +20,30 @@ If you're new to rs9p, start with these steps:
 ### Quick Example
 
 ```rust
-use rs9p::{srv::{Filesystem, Fid, srv_async}, Result, Fcall, Qid, QidType};
+use rs9p::{srv::{Filesystem, FId, srv_async}, Result, FCall, QId, QIdType};
 use async_trait::async_trait;
 
 #[derive(Clone)]
 struct MyFs;
 
 #[derive(Default)]
-struct MyFid;
+struct MyFId;
 
 #[async_trait]
 impl Filesystem for MyFs {
-    type Fid = MyFid;
+    type FId = MyFId;
 
     async fn rattach(
         &self,
-        _fid: &Fid<Self::Fid>,
-        _afid: Option<&Fid<Self::Fid>>,
+        _fid: &FId<Self::FId>,
+        _afid: Option<&FId<Self::FId>>,
         _uname: &str,
         _aname: &str,
         _n_uname: u32,
-    ) -> Result<Fcall> {
-        Ok(Fcall::Rattach {
-            qid: Qid {
-                typ: QidType::DIR,
+    ) -> Result<FCall> {
+        Ok(FCall::RAttach {
+            qid: QId {
+                typ: QIdType::DIR,
                 version: 0,
                 path: 0,
             }
@@ -65,17 +64,17 @@ async fn main() -> Result<()> {
 ### Core Concepts
 
 - **9P2000.L Protocol**: Extended variant of Plan 9's 9P protocol with Linux-specific features
-- **Fids (File Identifiers)**: 32-bit handles clients use to reference files/directories
+- **FIds (File Identifiers)**: 32-bit handles clients use to reference files/directories
 - **Async Implementation**: Built on tokio for high-performance async I/O
-- **Message Flow**: Request/response pattern (Tattach → rattach → Rattach)
+- **Message Flow**: Request/response pattern (TAttach → rattach → RAttach)
 
 ### Key Traits and Types
 
 - `Filesystem` - Main trait to implement for creating a 9P server
-- `Fid<T>` - Represents a client file identifier with user-defined state `T`
-- `Fcall` - Enum of all 9P protocol messages
+- `FId<T>` - Represents a client file identifier with user-defined state `T`
+- `FCall` - Enum of all 9P protocol messages
 - `Error` - Error type that maps to errno codes
-- `Qid` - Server-side file identifier with type, version, and path
+- `QId` - Server-side file identifier with type, version, and path
 
 ### Server Functions
 
@@ -113,7 +112,6 @@ The `Filesystem` trait defines methods for all 9P operations:
 ### Security Considerations
 
 - **Path Validation**: Always validate path components to prevent directory traversal
-- **Depth Limits**: Use max depth to prevent infinite recursion (see [max-depth.md](max-depth.md))
 - **Authentication**: Default implementation returns `EOPNOTSUPP` - implement `rauth` for production
 - **Permission Checks**: Validate user permissions before allowing operations
 - **Resource Limits**: Consider limiting open fids, concurrent connections, etc.

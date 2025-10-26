@@ -16,28 +16,28 @@ pub const P92000: &str = "9P2000";
 /// 9P2000.L version string
 pub const P92000L: &str = "9P2000.L";
 
-/// The version string that comes with Rversion when the server does not understand
+/// The version string that comes with RVersion when the server does not understand
 /// the client's version string
 pub const VERSION_UNKNOWN: &str = "unknown";
 
 /*
  * 9P magic numbers
  */
-/// Special tag which `Tversion`/`Rversion` must use as `tag`
+/// Special tag which `TVersion`/`RVersion` must use as `tag`
 pub const NOTAG: u16 = !0;
 
-/// Special value which `Tattach` with no auth must use as `afid`
+/// Special value which `TAttach` with no auth must use as `afid`
 ///
 /// If the client does not wish to authenticate the connection, or knows that authentication is
 /// not required, the afid field in the attach message should be set to `NOFID`
 pub const NOFID: u32 = !0;
 
-/// Special uid which `Tauth`/`Tattach` use as `n_uname` to indicate no uid is specified
+/// Special uid which `TAuth`/`TAttach` use as `n_uname` to indicate no uid is specified
 pub const NONUNAME: u32 = !0;
 
-/// Ample room for `Twrite`/`Rread` header
+/// Ample room for `TWrite`/`RRead` header
 ///
-/// size[4] Tread/Twrite[2] tag[2] fid[4] offset[8] count[4]
+/// size[4] TRead/TWrite[2] tag[2] fid[4] offset[8] count[4]
 pub const IOHDRSZ: u32 = 24;
 
 /// Room for readdir header
@@ -102,7 +102,7 @@ pub mod p92000 {
         /// Server subtype
         pub dev: u32,
         /// Unique id from server
-        pub qid: super::Qid,
+        pub qid: super::QId,
         /// Permissions
         pub mode: u32,
         /// Last read time
@@ -174,14 +174,14 @@ bitflags! {
 }
 
 bitflags! {
-    /// Bits in Qid.typ
+    /// Bits in QId.typ
     ///
-    /// QidType can be constructed from std::fs::FileType via From trait
+    /// QIdType can be constructed from std::fs::FileType via From trait
     ///
     /// # Protocol
     /// 9P2000/9P2000.L
     #[derive(Copy, Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
-    pub struct QidType: u8 {
+    pub struct QIdType: u8 {
         #[doc = "Type bit for directories"]
         const DIR       = 0x80;
         #[doc = "Type bit for append only files"]
@@ -203,22 +203,22 @@ bitflags! {
     }
 }
 
-impl From<::std::fs::FileType> for QidType {
+impl From<::std::fs::FileType> for QIdType {
     fn from(typ: ::std::fs::FileType) -> Self {
         From::from(&typ)
     }
 }
 
-impl<'a> From<&'a ::std::fs::FileType> for QidType {
+impl<'a> From<&'a ::std::fs::FileType> for QIdType {
     fn from(typ: &'a ::std::fs::FileType) -> Self {
-        let mut qid_type = QidType::FILE;
+        let mut qid_type = QIdType::FILE;
 
         if typ.is_dir() {
-            qid_type.insert(QidType::DIR)
+            qid_type.insert(QIdType::DIR)
         }
 
         if typ.is_symlink() {
-            qid_type.insert(QidType::SYMLINK)
+            qid_type.insert(QIdType::SYMLINK)
         }
 
         qid_type
@@ -226,12 +226,12 @@ impl<'a> From<&'a ::std::fs::FileType> for QidType {
 }
 
 bitflags! {
-    /// Bits in `mask` and `valid` of `Tgetattr` and `Rgetattr`.
+    /// Bits in `mask` and `valid` of `TGetAttr` and `RGetAttr`.
     ///
     /// # Protocol
     /// 9P2000.L
     #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
-    pub struct GetattrMask: u64 {
+    pub struct GetAttrMask: u64 {
         const MODE          = 0x00000001;
         const NLINK         = 0x00000002;
         const UID           = 0x00000004;
@@ -256,7 +256,7 @@ bitflags! {
 }
 
 bitflags! {
-    /// Bits in `mask` of `Tsetattr`.
+    /// Bits in `mask` of `TSetAttr`.
     ///
     /// If a time bit is set without the corresponding SET bit, the current
     /// system time on the server is used instead of the value sent in the request.
@@ -264,7 +264,7 @@ bitflags! {
     /// # Protocol
     /// 9P2000.L
     #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
-    pub struct SetattrMask: u32 {
+    pub struct SetAttrMask: u32 {
         const MODE      = 0x00000001;
         const UID       = 0x00000002;
         const GID       = 0x00000004;
@@ -284,18 +284,18 @@ bitflags! {
 /// # Protocol
 /// 9P2000/9P2000.L
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Qid {
+pub struct QId {
     /// Specify whether the file is a directory, append-only file, etc.
-    pub typ: QidType,
+    pub typ: QIdType,
     /// Version number for a file; typically, it is incremented every time the file is modified
     pub version: u32,
     /// An integer which is unique among all files in the hierarchy
     pub path: u64,
 }
 
-impl Qid {
+impl QId {
     pub fn size(&self) -> u32 {
-        (size_of::<QidType>() + size_of::<u32>() + size_of::<u64>()) as u32
+        (size_of::<QIdType>() + size_of::<u32>() + size_of::<u64>()) as u32
     }
 }
 
@@ -304,7 +304,7 @@ impl Qid {
 /// # Protocol
 /// 9P2000.L
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Statfs {
+pub struct StatFs {
     /// Type of file system
     pub typ: u32,
     /// Optimal transfer block size
@@ -325,9 +325,9 @@ pub struct Statfs {
     pub namelen: u32,
 }
 
-impl From<nix::sys::statvfs::Statvfs> for Statfs {
-    fn from(buf: nix::sys::statvfs::Statvfs) -> Statfs {
-        Statfs {
+impl From<nix::sys::statvfs::Statvfs> for StatFs {
+    fn from(buf: nix::sys::statvfs::Statvfs) -> StatFs {
+        StatFs {
             typ: 0,
             bsize: buf.block_size() as u32,
             blocks: buf.blocks(),
@@ -417,7 +417,7 @@ impl<'a> From<&'a fs::Metadata> for Stat {
     }
 }
 
-/// Subset of `Stat` used for `Tsetattr`
+/// Subset of `Stat` used for `TSetAttr`
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SetAttr {
     pub mode: u32,
@@ -428,14 +428,14 @@ pub struct SetAttr {
     pub mtime: Time,
 }
 
-/// Directory entry used in `Rreaddir`
+/// Directory entry used in `RReadDir`
 ///
 /// # Protocol
 /// 9P2000.L
 #[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct DirEntry {
-    /// Qid for this directory
-    pub qid: Qid,
+    /// QId for this directory
+    pub qid: QId,
     /// The index of this entry
     pub offset: u64,
     /// Corresponds to `d_type` of `struct dirent`
@@ -490,7 +490,7 @@ impl Default for DirEntryData {
     }
 }
 
-/// Data type used in `Rread` and `Twrite`
+/// Data type used in `RRead` and `TWrite`
 ///
 /// # Protocol
 /// 9P2000/9P2000.L
@@ -530,76 +530,76 @@ enum_from_primitive! {
     #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
     pub enum MsgType {
         // 9P2000.L
-        Tlerror         = 6,    // Illegal, never used
-        Rlerror,
-        Tstatfs         = 8,
-        Rstatfs,
-        Tlopen          = 12,
-        Rlopen,
-        Tlcreate        = 14,
-        Rlcreate,
-        Tsymlink        = 16,
-        Rsymlink,
-        Tmknod          = 18,
-        Rmknod,
-        Trename         = 20,
-        Rrename,
-        Treadlink       = 22,
-        Rreadlink,
-        Tgetattr        = 24,
-        Rgetattr,
-        Tsetattr        = 26,
-        Rsetattr,
-        Txattrwalk      = 30,
-        Rxattrwalk,
-        Txattrcreate    = 32,
-        Rxattrcreate,
-        Treaddir        = 40,
-        Rreaddir,
-        Tfsync          = 50,
-        Rfsync,
-        Tlock           = 52,
-        Rlock,
-        Tgetlock        = 54,
-        Rgetlock,
-        Tlink           = 70,
-        Rlink,
-        Tmkdir          = 72,
-        Rmkdir,
-        Trenameat       = 74,
-        Rrenameat,
-        Tunlinkat       = 76,
-        Runlinkat,
+        TlError         = 6,    // Illegal, never used
+        RlError,
+        TStatFs         = 8,
+        RStatFs,
+        TlOpen          = 12,
+        RlOpen,
+        TlCreate        = 14,
+        RlCreate,
+        TSymlink        = 16,
+        RSymlink,
+        TMkNod          = 18,
+        RMkNod,
+        TRename         = 20,
+        RRename,
+        TReadLink       = 22,
+        RReadLink,
+        TGetAttr        = 24,
+        RGetAttr,
+        TSetAttr        = 26,
+        RSetAttr,
+        TxAttrWalk      = 30,
+        RxAttrWalk,
+        TxAttrCreate    = 32,
+        RxAttrCreate,
+        TReadDir        = 40,
+        RReadDir,
+        TFSync          = 50,
+        RFSync,
+        TLock           = 52,
+        RLock,
+        TGetLock        = 54,
+        RGetLock,
+        TLink           = 70,
+        RLink,
+        TMkDir          = 72,
+        RMkDir,
+        TRenameAt       = 74,
+        RRenameAt,
+        TUnlinkAt       = 76,
+        RUnlinkAt,
 
         // 9P2000
-        Tversion        = 100,
-        Rversion,
-        Tauth           = 102,
-        Rauth,
-        Tattach         = 104,
-        Rattach,
-        //Terror          = 106,  // Illegal, never used
-        //Rerror,
-        Tflush          = 108,
-        Rflush,
-        Twalk           = 110,
-        Rwalk,
-        //Topen           = 112,
-        //Ropen,
-        //Tcreate         = 114,
-        //Rcreate,
-        Tread           = 116,
-        Rread,
-        Twrite          = 118,
-        Rwrite,
-        Tclunk          = 120,
-        Rclunk,
-        Tremove         = 122,
-        Rremove,
-        //Tstat           = 124,
-        //Rstat,
-        //Twstat          = 126,
-        //Rwstat,
+        TVersion        = 100,
+        RVersion,
+        TAuth           = 102,
+        RAuth,
+        TAttach         = 104,
+        RAttach,
+        //TError          = 106,  // Illegal, never used
+        //RError,
+        TFlush          = 108,
+        RFlush,
+        TWalk           = 110,
+        RWalk,
+        //TOpen           = 112,
+        //ROpen,
+        //TCreate         = 114,
+        //RCreate,
+        TRead           = 116,
+        RRead,
+        TWrite          = 118,
+        RWrite,
+        TClunk          = 120,
+        RClunk,
+        TRemove         = 122,
+        RRemove,
+        //TStat           = 124,
+        //RStat,
+        //TWStat          = 126,
+        //RWStat,
     }
 }
 
@@ -615,145 +615,145 @@ impl MsgType {
 
         matches!(
             *self,
-            Rlerror
-                | Rstatfs
-                | Rlopen
-                | Rlcreate
-                | Rsymlink
-                | Rmknod
-                | Rrename
-                | Rreadlink
-                | Rgetattr
-                | Rsetattr
-                | Rxattrwalk
-                | Rxattrcreate
-                | Rreaddir
-                | Rfsync
-                | Rlock
-                | Rgetlock
-                | Rlink
-                | Rmkdir
-                | Rrenameat
-                | Runlinkat
-                | Rversion
-                | Rauth
-                | Rattach
-                | Rflush
-                | Rwalk
-                | Rread
-                | Rwrite
-                | Rclunk
-                | Rremove
+            RlError
+                | RStatFs
+                | RlOpen
+                | RlCreate
+                | RSymlink
+                | RMkNod
+                | RRename
+                | RReadLink
+                | RGetAttr
+                | RSetAttr
+                | RxAttrWalk
+                | RxAttrCreate
+                | RReadDir
+                | RFSync
+                | RLock
+                | RGetLock
+                | RLink
+                | RMkDir
+                | RRenameAt
+                | RUnlinkAt
+                | RVersion
+                | RAuth
+                | RAttach
+                | RFlush
+                | RWalk
+                | RRead
+                | RWrite
+                | RClunk
+                | RRemove
         )
     }
 }
 
-impl<'a> From<&'a Fcall> for MsgType {
-    fn from(fcall: &'a Fcall) -> MsgType {
+impl<'a> From<&'a FCall> for MsgType {
+    fn from(fcall: &'a FCall) -> MsgType {
         match *fcall {
-            Fcall::Rlerror { .. } => MsgType::Rlerror,
-            Fcall::Tstatfs { .. } => MsgType::Tstatfs,
-            Fcall::Rstatfs { .. } => MsgType::Rstatfs,
-            Fcall::Tlopen { .. } => MsgType::Tlopen,
-            Fcall::Rlopen { .. } => MsgType::Rlopen,
-            Fcall::Tlcreate { .. } => MsgType::Tlcreate,
-            Fcall::Rlcreate { .. } => MsgType::Rlcreate,
-            Fcall::Tsymlink { .. } => MsgType::Tsymlink,
-            Fcall::Rsymlink { .. } => MsgType::Rsymlink,
-            Fcall::Tmknod { .. } => MsgType::Tmknod,
-            Fcall::Rmknod { .. } => MsgType::Rmknod,
-            Fcall::Trename { .. } => MsgType::Trename,
-            Fcall::Rrename => MsgType::Rrename,
-            Fcall::Treadlink { .. } => MsgType::Treadlink,
-            Fcall::Rreadlink { .. } => MsgType::Rreadlink,
-            Fcall::Tgetattr { .. } => MsgType::Tgetattr,
-            Fcall::Rgetattr { .. } => MsgType::Rgetattr,
-            Fcall::Tsetattr { .. } => MsgType::Tsetattr,
-            Fcall::Rsetattr => MsgType::Rsetattr,
-            Fcall::Txattrwalk { .. } => MsgType::Txattrwalk,
-            Fcall::Rxattrwalk { .. } => MsgType::Rxattrwalk,
-            Fcall::Txattrcreate { .. } => MsgType::Txattrcreate,
-            Fcall::Rxattrcreate => MsgType::Rxattrcreate,
-            Fcall::Treaddir { .. } => MsgType::Treaddir,
-            Fcall::Rreaddir { .. } => MsgType::Rreaddir,
-            Fcall::Tfsync { .. } => MsgType::Tfsync,
-            Fcall::Rfsync => MsgType::Rfsync,
-            Fcall::Tlock { .. } => MsgType::Tlock,
-            Fcall::Rlock { .. } => MsgType::Rlock,
-            Fcall::Tgetlock { .. } => MsgType::Tgetlock,
-            Fcall::Rgetlock { .. } => MsgType::Rgetlock,
-            Fcall::Tlink { .. } => MsgType::Tlink,
-            Fcall::Rlink => MsgType::Rlink,
-            Fcall::Tmkdir { .. } => MsgType::Tmkdir,
-            Fcall::Rmkdir { .. } => MsgType::Rmkdir,
-            Fcall::Trenameat { .. } => MsgType::Trenameat,
-            Fcall::Rrenameat => MsgType::Rrenameat,
-            Fcall::Tunlinkat { .. } => MsgType::Tunlinkat,
-            Fcall::Runlinkat => MsgType::Runlinkat,
-            Fcall::Tauth { .. } => MsgType::Tauth,
-            Fcall::Rauth { .. } => MsgType::Rauth,
-            Fcall::Tattach { .. } => MsgType::Tattach,
-            Fcall::Rattach { .. } => MsgType::Rattach,
-            Fcall::Tversion { .. } => MsgType::Tversion,
-            Fcall::Rversion { .. } => MsgType::Rversion,
-            Fcall::Tflush { .. } => MsgType::Tflush,
-            Fcall::Rflush => MsgType::Rflush,
-            Fcall::Twalk { .. } => MsgType::Twalk,
-            Fcall::Rwalk { .. } => MsgType::Rwalk,
-            Fcall::Tread { .. } => MsgType::Tread,
-            Fcall::Rread { .. } => MsgType::Rread,
-            Fcall::Twrite { .. } => MsgType::Twrite,
-            Fcall::Rwrite { .. } => MsgType::Rwrite,
-            Fcall::Tclunk { .. } => MsgType::Tclunk,
-            Fcall::Rclunk => MsgType::Rclunk,
-            Fcall::Tremove { .. } => MsgType::Tremove,
-            Fcall::Rremove => MsgType::Rremove,
+            FCall::RlError { .. } => MsgType::RlError,
+            FCall::TStatFs { .. } => MsgType::TStatFs,
+            FCall::RStatFs { .. } => MsgType::RStatFs,
+            FCall::TlOpen { .. } => MsgType::TlOpen,
+            FCall::RlOpen { .. } => MsgType::RlOpen,
+            FCall::TlCreate { .. } => MsgType::TlCreate,
+            FCall::RlCreate { .. } => MsgType::RlCreate,
+            FCall::TSymlink { .. } => MsgType::TSymlink,
+            FCall::RSymlink { .. } => MsgType::RSymlink,
+            FCall::TMkNod { .. } => MsgType::TMkNod,
+            FCall::RMkNod { .. } => MsgType::RMkNod,
+            FCall::TRename { .. } => MsgType::TRename,
+            FCall::RRename => MsgType::RRename,
+            FCall::TReadLink { .. } => MsgType::TReadLink,
+            FCall::RReadLink { .. } => MsgType::RReadLink,
+            FCall::TGetAttr { .. } => MsgType::TGetAttr,
+            FCall::RGetAttr { .. } => MsgType::RGetAttr,
+            FCall::TSetAttr { .. } => MsgType::TSetAttr,
+            FCall::RSetAttr => MsgType::RSetAttr,
+            FCall::TxAttrWalk { .. } => MsgType::TxAttrWalk,
+            FCall::RxAttrWalk { .. } => MsgType::RxAttrWalk,
+            FCall::TxAttrCreate { .. } => MsgType::TxAttrCreate,
+            FCall::RxAttrCreate => MsgType::RxAttrCreate,
+            FCall::TReadDir { .. } => MsgType::TReadDir,
+            FCall::RReadDir { .. } => MsgType::RReadDir,
+            FCall::TFSync { .. } => MsgType::TFSync,
+            FCall::RFSync => MsgType::RFSync,
+            FCall::TLock { .. } => MsgType::TLock,
+            FCall::RLock { .. } => MsgType::RLock,
+            FCall::TGetLock { .. } => MsgType::TGetLock,
+            FCall::RGetLock { .. } => MsgType::RGetLock,
+            FCall::TLink { .. } => MsgType::TLink,
+            FCall::RLink => MsgType::RLink,
+            FCall::TMkDir { .. } => MsgType::TMkDir,
+            FCall::RMkDir { .. } => MsgType::RMkDir,
+            FCall::TRenameAt { .. } => MsgType::TRenameAt,
+            FCall::RRenameAt => MsgType::RRenameAt,
+            FCall::TUnlinkAt { .. } => MsgType::TUnlinkAt,
+            FCall::RUnlinkAt => MsgType::RUnlinkAt,
+            FCall::TAuth { .. } => MsgType::TAuth,
+            FCall::RAuth { .. } => MsgType::RAuth,
+            FCall::TAttach { .. } => MsgType::TAttach,
+            FCall::RAttach { .. } => MsgType::RAttach,
+            FCall::TVersion { .. } => MsgType::TVersion,
+            FCall::RVersion { .. } => MsgType::RVersion,
+            FCall::TFlush { .. } => MsgType::TFlush,
+            FCall::RFlush => MsgType::RFlush,
+            FCall::TWalk { .. } => MsgType::TWalk,
+            FCall::RWalk { .. } => MsgType::RWalk,
+            FCall::TRead { .. } => MsgType::TRead,
+            FCall::RRead { .. } => MsgType::RRead,
+            FCall::TWrite { .. } => MsgType::TWrite,
+            FCall::RWrite { .. } => MsgType::RWrite,
+            FCall::TClunk { .. } => MsgType::TClunk,
+            FCall::RClunk => MsgType::RClunk,
+            FCall::TRemove { .. } => MsgType::TRemove,
+            FCall::RRemove => MsgType::RRemove,
         }
     }
 }
 
 /// A data type encapsulating the various 9P messages
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Fcall {
+pub enum FCall {
     // 9P2000.L
-    Rlerror {
+    RlError {
         ecode: u32,
     },
-    Tstatfs {
+    TStatFs {
         fid: u32,
     },
-    Rstatfs {
-        statfs: Statfs,
+    RStatFs {
+        statfs: StatFs,
     },
-    Tlopen {
+    TlOpen {
         fid: u32,
         flags: u32,
     },
-    Rlopen {
-        qid: Qid,
+    RlOpen {
+        qid: QId,
         iounit: u32,
     },
-    Tlcreate {
+    TlCreate {
         fid: u32,
         name: String,
         flags: u32,
         mode: u32,
         gid: u32,
     },
-    Rlcreate {
-        qid: Qid,
+    RlCreate {
+        qid: QId,
         iounit: u32,
     },
-    Tsymlink {
+    TSymlink {
         fid: u32,
         name: String,
         symtgt: String,
         gid: u32,
     },
-    Rsymlink {
-        qid: Qid,
+    RSymlink {
+        qid: QId,
     },
-    Tmknod {
+    TMkNod {
         dfid: u32,
         name: String,
         mode: u32,
@@ -761,222 +761,222 @@ pub enum Fcall {
         minor: u32,
         gid: u32,
     },
-    Rmknod {
-        qid: Qid,
+    RMkNod {
+        qid: QId,
     },
-    Trename {
+    TRename {
         fid: u32,
         dfid: u32,
         name: String,
     },
-    Rrename,
-    Treadlink {
+    RRename,
+    TReadLink {
         fid: u32,
     },
-    Rreadlink {
+    RReadLink {
         target: String,
     },
-    Tgetattr {
+    TGetAttr {
         fid: u32,
-        req_mask: GetattrMask,
+        req_mask: GetAttrMask,
     },
     /// Reserved members specified in the protocol are handled in Encodable/Decodable traits.
-    Rgetattr {
-        valid: GetattrMask,
-        qid: Qid,
+    RGetAttr {
+        valid: GetAttrMask,
+        qid: QId,
         stat: Stat,
     },
-    Tsetattr {
+    TSetAttr {
         fid: u32,
-        valid: SetattrMask,
+        valid: SetAttrMask,
         stat: SetAttr,
     },
-    Rsetattr,
-    Txattrwalk {
+    RSetAttr,
+    TxAttrWalk {
         fid: u32,
         newfid: u32,
         name: String,
     },
-    Rxattrwalk {
+    RxAttrWalk {
         size: u64,
     },
-    Txattrcreate {
+    TxAttrCreate {
         fid: u32,
         name: String,
         attr_size: u64,
         flags: u32,
     },
-    Rxattrcreate,
-    Treaddir {
+    RxAttrCreate,
+    TReadDir {
         fid: u32,
         offset: u64,
         count: u32,
     },
-    Rreaddir {
+    RReadDir {
         data: DirEntryData,
     },
-    Tfsync {
+    TFSync {
         fid: u32,
     },
-    Rfsync,
-    Tlock {
+    RFSync,
+    TLock {
         fid: u32,
         flock: Flock,
     },
-    Rlock {
+    RLock {
         status: LockStatus,
     },
-    Tgetlock {
+    TGetLock {
         fid: u32,
         flock: Getlock,
     },
-    Rgetlock {
+    RGetLock {
         flock: Getlock,
     },
-    Tlink {
+    TLink {
         dfid: u32,
         fid: u32,
         name: String,
     },
-    Rlink,
-    Tmkdir {
+    RLink,
+    TMkDir {
         dfid: u32,
         name: String,
         mode: u32,
         gid: u32,
     },
-    Rmkdir {
-        qid: Qid,
+    RMkDir {
+        qid: QId,
     },
-    Trenameat {
+    TRenameAt {
         olddirfid: u32,
         oldname: String,
         newdirfid: u32,
         newname: String,
     },
-    Rrenameat,
-    Tunlinkat {
+    RRenameAt,
+    TUnlinkAt {
         dirfd: u32,
         name: String,
         flags: u32,
     },
-    Runlinkat,
+    RUnlinkAt,
 
     // 9P2000.u
-    Tauth {
+    TAuth {
         afid: u32,
         uname: String,
         aname: String,
         n_uname: u32,
     },
-    Rauth {
-        aqid: Qid,
+    RAuth {
+        aqid: QId,
     },
-    Tattach {
+    TAttach {
         fid: u32,
         afid: u32,
         uname: String,
         aname: String,
         n_uname: u32,
     },
-    Rattach {
-        qid: Qid,
+    RAttach {
+        qid: QId,
     },
 
     // 9P2000
-    Tversion {
+    TVersion {
         msize: u32,
         version: String,
     },
-    Rversion {
+    RVersion {
         msize: u32,
         version: String,
     },
-    Tflush {
+    TFlush {
         oldtag: u16,
     },
-    Rflush,
-    Twalk {
+    RFlush,
+    TWalk {
         fid: u32,
         newfid: u32,
         wnames: Vec<String>,
     },
-    Rwalk {
-        wqids: Vec<Qid>,
+    RWalk {
+        wqids: Vec<QId>,
     },
-    Tread {
+    TRead {
         fid: u32,
         offset: u64,
         count: u32,
     },
-    Rread {
+    RRead {
         data: Data,
     },
-    Twrite {
+    TWrite {
         fid: u32,
         offset: u64,
         data: Data,
     },
-    Rwrite {
+    RWrite {
         count: u32,
     },
-    Tclunk {
+    TClunk {
         fid: u32,
     },
-    Rclunk,
-    Tremove {
+    RClunk,
+    TRemove {
         fid: u32,
     },
-    Rremove,
+    RRemove,
     // 9P2000 operations not used for 9P2000.L
-    //Tauth { afid: u32, uname: String, aname: String },
-    //Rauth { aqid: Qid },
-    //Rerror { ename: String },
-    //Tattach { fid: u32, afid: u32, uname: String, aname: String },
-    //Rattach { qid: Qid },
-    //Topen { fid: u32, mode: u8 },
-    //Ropen { qid: Qid, iounit: u32 },
-    //Tcreate { fid: u32, name: String, perm: u32, mode: u8 },
-    //Rcreate { qid: Qid, iounit: u32 },
-    //Tstat { fid: u32 },
-    //Rstat { stat: Stat },
-    //Twstat { fid: u32, stat: Stat },
-    //Rwstat,
+    //TAuth { afid: u32, uname: String, aname: String },
+    //RAuth { aqid: QId },
+    //RError { ename: String },
+    //TAttach { fid: u32, afid: u32, uname: String, aname: String },
+    //RAttach { qid: QId },
+    //TOpen { fid: u32, mode: u8 },
+    //ROpen { qid: QId, iounit: u32 },
+    //TCreate { fid: u32, name: String, perm: u32, mode: u8 },
+    //RCreate { qid: QId, iounit: u32 },
+    //TStat { fid: u32 },
+    //RStat { stat: Stat },
+    //TWStat { fid: u32, stat: Stat },
+    //RWStat,
 }
 
-impl Fcall {
+impl FCall {
     /// Get the fids which self contains
     pub fn fids(&self) -> Vec<u32> {
         match *self {
-            Fcall::Tstatfs { fid } => vec![fid],
-            Fcall::Tlopen { fid, .. } => vec![fid],
-            Fcall::Tlcreate { fid, .. } => vec![fid],
-            Fcall::Tsymlink { fid, .. } => vec![fid],
-            Fcall::Tmknod { dfid, .. } => vec![dfid],
-            Fcall::Trename { fid, dfid, .. } => vec![fid, dfid],
-            Fcall::Treadlink { fid } => vec![fid],
-            Fcall::Tgetattr { fid, .. } => vec![fid],
-            Fcall::Tsetattr { fid, .. } => vec![fid],
-            Fcall::Txattrwalk { fid, .. } => vec![fid],
-            Fcall::Txattrcreate { fid, .. } => vec![fid],
-            Fcall::Treaddir { fid, .. } => vec![fid],
-            Fcall::Tfsync { fid, .. } => vec![fid],
-            Fcall::Tlock { fid, .. } => vec![fid],
-            Fcall::Tgetlock { fid, .. } => vec![fid],
-            Fcall::Tlink { dfid, fid, .. } => vec![dfid, fid],
-            Fcall::Tmkdir { dfid, .. } => vec![dfid],
-            Fcall::Trenameat {
+            FCall::TStatFs { fid } => vec![fid],
+            FCall::TlOpen { fid, .. } => vec![fid],
+            FCall::TlCreate { fid, .. } => vec![fid],
+            FCall::TSymlink { fid, .. } => vec![fid],
+            FCall::TMkNod { dfid, .. } => vec![dfid],
+            FCall::TRename { fid, dfid, .. } => vec![fid, dfid],
+            FCall::TReadLink { fid } => vec![fid],
+            FCall::TGetAttr { fid, .. } => vec![fid],
+            FCall::TSetAttr { fid, .. } => vec![fid],
+            FCall::TxAttrWalk { fid, .. } => vec![fid],
+            FCall::TxAttrCreate { fid, .. } => vec![fid],
+            FCall::TReadDir { fid, .. } => vec![fid],
+            FCall::TFSync { fid, .. } => vec![fid],
+            FCall::TLock { fid, .. } => vec![fid],
+            FCall::TGetLock { fid, .. } => vec![fid],
+            FCall::TLink { dfid, fid, .. } => vec![dfid, fid],
+            FCall::TMkDir { dfid, .. } => vec![dfid],
+            FCall::TRenameAt {
                 olddirfid,
                 newdirfid,
                 ..
             } => vec![olddirfid, newdirfid],
-            Fcall::Tunlinkat { dirfd, .. } => vec![dirfd],
-            Fcall::Tattach { afid, .. } if afid != NOFID => vec![afid],
-            Fcall::Twalk { fid, .. } => vec![fid],
-            Fcall::Tread { fid, .. } => vec![fid],
-            Fcall::Twrite { fid, .. } => vec![fid],
-            Fcall::Tclunk { fid, .. } => vec![fid],
-            Fcall::Tremove { fid } => vec![fid],
+            FCall::TUnlinkAt { dirfd, .. } => vec![dirfd],
+            FCall::TAttach { afid, .. } if afid != NOFID => vec![afid],
+            FCall::TWalk { fid, .. } => vec![fid],
+            FCall::TRead { fid, .. } => vec![fid],
+            FCall::TWrite { fid, .. } => vec![fid],
+            FCall::TClunk { fid, .. } => vec![fid],
+            FCall::TRemove { fid } => vec![fid],
             _ => Vec::new(),
         }
     }
@@ -984,26 +984,26 @@ impl Fcall {
     /// Get the newfid which self contains
     pub fn newfid(&self) -> Option<u32> {
         match *self {
-            Fcall::Txattrwalk { newfid, .. } => Some(newfid),
-            Fcall::Tauth { afid, .. } => Some(afid),
-            Fcall::Tattach { fid, .. } => Some(fid),
-            Fcall::Twalk { newfid, .. } => Some(newfid),
+            FCall::TxAttrWalk { newfid, .. } => Some(newfid),
+            FCall::TAuth { afid, .. } => Some(afid),
+            FCall::TAttach { fid, .. } => Some(fid),
+            FCall::TWalk { newfid, .. } => Some(newfid),
             _ => None,
         }
     }
 
     /// Get the qids which self contains
-    pub fn qids(&self) -> Vec<Qid> {
+    pub fn qids(&self) -> Vec<QId> {
         match *self {
-            Fcall::Rlopen { qid, .. } => vec![qid],
-            Fcall::Rlcreate { qid, .. } => vec![qid],
-            Fcall::Rsymlink { qid } => vec![qid],
-            Fcall::Rmknod { qid } => vec![qid],
-            Fcall::Rgetattr { qid, .. } => vec![qid],
-            Fcall::Rmkdir { qid } => vec![qid],
-            Fcall::Rauth { aqid } => vec![aqid],
-            Fcall::Rattach { qid } => vec![qid],
-            Fcall::Rwalk { ref wqids } => wqids.clone(),
+            FCall::RlOpen { qid, .. } => vec![qid],
+            FCall::RlCreate { qid, .. } => vec![qid],
+            FCall::RSymlink { qid } => vec![qid],
+            FCall::RMkNod { qid } => vec![qid],
+            FCall::RGetAttr { qid, .. } => vec![qid],
+            FCall::RMkDir { qid } => vec![qid],
+            FCall::RAuth { aqid } => vec![aqid],
+            FCall::RAttach { qid } => vec![qid],
+            FCall::RWalk { ref wqids } => wqids.clone(),
             _ => Vec::new(),
         }
     }
@@ -1016,5 +1016,5 @@ pub struct Msg {
     /// The reply to the message will have the same tag
     pub tag: u16,
     /// Message body encapsulating the various 9P messages
-    pub body: Fcall,
+    pub body: FCall,
 }

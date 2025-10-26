@@ -22,7 +22,7 @@
 //! # Example
 //!
 //! ```no_run
-//! use rs9p::{srv::{Filesystem, Fid, srv_async}, Result, Fcall};
+//! use rs9p::{srv::{Filesystem, FId, srv_async}, Result, FCall};
 //! use async_trait::async_trait;
 //!
 //! // Define your filesystem
@@ -31,26 +31,26 @@
 //!
 //! // Define per-fid state (or use () if you don't need state)
 //! #[derive(Default)]
-//! struct MyFid {
+//! struct MyFId {
 //!     // Your per-fid data here
 //! }
 //!
 //! #[async_trait]
 //! impl Filesystem for MyFs {
-//!     type Fid = MyFid;
+//!     type FId = MyFId;
 //!
 //!     async fn rattach(
 //!         &self,
-//!         fid: &Fid<Self::Fid>,
-//!         _afid: Option<&Fid<Self::Fid>>,
+//!         fid: &FId<Self::FId>,
+//!         _afid: Option<&FId<Self::FId>>,
 //!         _uname: &str,
 //!         _aname: &str,
 //!         _n_uname: u32,
-//!     ) -> Result<Fcall> {
+//!     ) -> Result<FCall> {
 //!         // Initialize the root fid and return its qid
-//!         Ok(Fcall::Rattach {
-//!             qid: rs9p::Qid {
-//!                 typ: rs9p::QidType::DIR,
+//!         Ok(FCall::RAttach {
+//!             qid: rs9p::QId {
+//!                 typ: rs9p::QIdType::DIR,
 //!                 version: 0,
 //!                 path: 0,
 //!             }
@@ -71,27 +71,27 @@
 //!
 //! ## Message Flow
 //!
-//! 1. **Version Negotiation**: Client sends `Tversion`, server responds with `Rversion`
-//! 2. **Authentication** (optional): `Tauth`/`Rauth` exchange
-//! 3. **Attach**: Client attaches to the filesystem root with `Tattach`
+//! 1. **Version Negotiation**: Client sends `TVersion`, server responds with `RVersion`
+//! 2. **Authentication** (optional): `TAuth`/`RAuth` exchange
+//! 3. **Attach**: Client attaches to the filesystem root with `TAttach`
 //! 4. **Operations**: Client performs file operations (`walk`, `open`, `read`, `write`, etc.)
-//! 5. **Cleanup**: Client clunks fids with `Tclunk` to release resources
+//! 5. **Cleanup**: Client clunks fids with `TClunk` to release resources
 //!
-//! ## Fid Management
+//! ## FId Management
 //!
 //! A "fid" (file identifier) is a 32-bit handle used by the client to reference a file
 //! or directory. The server must track the mapping between fids and filesystem objects.
 //!
 //! **Important invariants:**
 //! - Each fid is unique per connection
-//! - Fids persist across operations until explicitly clunked
+//! - FIds persist across operations until explicitly clunked
 //! - Walking to a new fid creates a new fid (the old one remains valid)
-//! - After `Tclunk`, the fid is invalid and will be removed
+//! - After `TClunk`, the fid is invalid and will be removed
 //!
 //! # Error Handling
 //!
 //! Return errors using the [`error::Error`] type. The server will automatically
-//! convert these to `Rlerror` messages with appropriate error codes (errno).
+//! convert these to `RlError` messages with appropriate error codes (errno).
 //!
 //! Common error codes:
 //! - `ENOENT` - File not found

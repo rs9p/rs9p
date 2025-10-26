@@ -28,18 +28,18 @@ use {
     tokio_util::codec::length_delimited::LengthDelimitedCodec,
 };
 
-/// Represents a fid of clients holding associated `Filesystem::Fid`.
+/// Represents a fid of clients holding associated `Filesystem::FId`.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Fid<T> {
+pub struct FId<T> {
     /// Raw client side fid.
     fid: u32,
 
-    /// `Filesystem::Fid` associated with this fid.
+    /// `Filesystem::FId` associated with this fid.
     /// Changing this value affects the continuous callbacks.
     pub aux: T,
 }
 
-impl<T> Fid<T> {
+impl<T> FId<T> {
     /// Get the raw fid.
     pub fn fid(&self) -> u32 {
         self.fid
@@ -50,7 +50,7 @@ impl<T> Fid<T> {
 /// Filesystem server trait for implementing 9P2000.L servers.
 ///
 /// Implementors can represent an error condition by returning an `Err`.
-/// Otherwise, they must return the appropriate `Fcall` response with required fields.
+/// Otherwise, they must return the appropriate `FCall` response with required fields.
 ///
 /// # Error Handling
 /// All methods should return `Err(error::Error::No(errno))` to send an error to the client.
@@ -64,7 +64,7 @@ impl<T> Fid<T> {
 /// ```no_run
 /// use std::path::PathBuf;
 ///
-/// use rs9p::{error, srv::{Filesystem, Fid}, fcall::Fcall};
+/// use rs9p::{error, srv::{Filesystem, FId}, fcall::FCall};
 /// use async_trait::async_trait;
 ///
 /// struct MyFs;
@@ -72,146 +72,146 @@ impl<T> Fid<T> {
 ///
 /// #[async_trait]
 /// impl Filesystem for MyFs {
-///     type Fid = PathBuf;
+///     type FId = PathBuf;
 ///
 ///     async fn rattach(&self,
-///                      fid: &Fid<Self::Fid>,
-///                      afid: Option<&Fid<Self::Fid>>,
+///                      fid: &FId<Self::FId>,
+///                      afid: Option<&FId<Self::FId>>,
 ///                      uname: &str,
 ///                      aname: &str,
 ///                      n_uname: u32,
-/// ) -> Result<Fcall> {
+/// ) -> Result<FCall> {
 ///         todo!("implementation")
 ///     }
 /// }
 /// ```
 pub trait Filesystem: Send {
     /// User defined fid type to be associated with a client's fid.
-    type Fid: Send + Sync + Default;
+    type FId: Send + Sync + Default;
 
     // 9P2000.L
-    async fn rstatfs(&self, _: &Fid<Self::Fid>) -> Result<Fcall> {
+    async fn rstatfs(&self, _: &FId<Self::FId>) -> Result<FCall> {
         Err(error::Error::No(EOPNOTSUPP))
     }
 
-    async fn rlopen(&self, _: &Fid<Self::Fid>, _flags: u32) -> Result<Fcall> {
+    async fn rlopen(&self, _: &FId<Self::FId>, _flags: u32) -> Result<FCall> {
         Err(error::Error::No(EOPNOTSUPP))
     }
 
     async fn rlcreate(
         &self,
-        _: &Fid<Self::Fid>,
+        _: &FId<Self::FId>,
         _name: &str,
         _flags: u32,
         _mode: u32,
         _gid: u32,
-    ) -> Result<Fcall> {
+    ) -> Result<FCall> {
         Err(error::Error::No(EOPNOTSUPP))
     }
 
     async fn rsymlink(
         &self,
-        _: &Fid<Self::Fid>,
+        _: &FId<Self::FId>,
         _name: &str,
         _sym: &str,
         _gid: u32,
-    ) -> Result<Fcall> {
+    ) -> Result<FCall> {
         Err(error::Error::No(EOPNOTSUPP))
     }
 
     async fn rmknod(
         &self,
-        _: &Fid<Self::Fid>,
+        _: &FId<Self::FId>,
         _name: &str,
         _mode: u32,
         _major: u32,
         _minor: u32,
         _gid: u32,
-    ) -> Result<Fcall> {
+    ) -> Result<FCall> {
         Err(error::Error::No(EOPNOTSUPP))
     }
 
-    async fn rrename(&self, _: &Fid<Self::Fid>, _: &Fid<Self::Fid>, _name: &str) -> Result<Fcall> {
+    async fn rrename(&self, _: &FId<Self::FId>, _: &FId<Self::FId>, _name: &str) -> Result<FCall> {
         Err(error::Error::No(EOPNOTSUPP))
     }
 
-    async fn rreadlink(&self, _: &Fid<Self::Fid>) -> Result<Fcall> {
+    async fn rreadlink(&self, _: &FId<Self::FId>) -> Result<FCall> {
         Err(error::Error::No(EOPNOTSUPP))
     }
 
-    async fn rgetattr(&self, _: &Fid<Self::Fid>, _req_mask: GetattrMask) -> Result<Fcall> {
+    async fn rgetattr(&self, _: &FId<Self::FId>, _req_mask: GetAttrMask) -> Result<FCall> {
         Err(error::Error::No(EOPNOTSUPP))
     }
 
     async fn rsetattr(
         &self,
-        _: &Fid<Self::Fid>,
-        _valid: SetattrMask,
+        _: &FId<Self::FId>,
+        _valid: SetAttrMask,
         _stat: &SetAttr,
-    ) -> Result<Fcall> {
+    ) -> Result<FCall> {
         Err(error::Error::No(EOPNOTSUPP))
     }
 
     async fn rxattrwalk(
         &self,
-        _: &Fid<Self::Fid>,
-        _: &Fid<Self::Fid>,
+        _: &FId<Self::FId>,
+        _: &FId<Self::FId>,
         _name: &str,
-    ) -> Result<Fcall> {
+    ) -> Result<FCall> {
         Err(error::Error::No(EOPNOTSUPP))
     }
 
     async fn rxattrcreate(
         &self,
-        _: &Fid<Self::Fid>,
+        _: &FId<Self::FId>,
         _name: &str,
         _attr_size: u64,
         _flags: u32,
-    ) -> Result<Fcall> {
+    ) -> Result<FCall> {
         Err(error::Error::No(EOPNOTSUPP))
     }
 
-    async fn rreaddir(&self, _: &Fid<Self::Fid>, _offset: u64, _count: u32) -> Result<Fcall> {
+    async fn rreaddir(&self, _: &FId<Self::FId>, _offset: u64, _count: u32) -> Result<FCall> {
         Err(error::Error::No(EOPNOTSUPP))
     }
 
-    async fn rfsync(&self, _: &Fid<Self::Fid>) -> Result<Fcall> {
+    async fn rfsync(&self, _: &FId<Self::FId>) -> Result<FCall> {
         Err(error::Error::No(EOPNOTSUPP))
     }
 
-    async fn rlock(&self, _: &Fid<Self::Fid>, _lock: &Flock) -> Result<Fcall> {
+    async fn rlock(&self, _: &FId<Self::FId>, _lock: &Flock) -> Result<FCall> {
         Err(error::Error::No(EOPNOTSUPP))
     }
 
-    async fn rgetlock(&self, _: &Fid<Self::Fid>, _lock: &Getlock) -> Result<Fcall> {
+    async fn rgetlock(&self, _: &FId<Self::FId>, _lock: &Getlock) -> Result<FCall> {
         Err(error::Error::No(EOPNOTSUPP))
     }
 
-    async fn rlink(&self, _: &Fid<Self::Fid>, _: &Fid<Self::Fid>, _name: &str) -> Result<Fcall> {
+    async fn rlink(&self, _: &FId<Self::FId>, _: &FId<Self::FId>, _name: &str) -> Result<FCall> {
         Err(error::Error::No(EOPNOTSUPP))
     }
 
     async fn rmkdir(
         &self,
-        _: &Fid<Self::Fid>,
+        _: &FId<Self::FId>,
         _name: &str,
         _mode: u32,
         _gid: u32,
-    ) -> Result<Fcall> {
+    ) -> Result<FCall> {
         Err(error::Error::No(EOPNOTSUPP))
     }
 
     async fn rrenameat(
         &self,
-        _: &Fid<Self::Fid>,
+        _: &FId<Self::FId>,
         _oldname: &str,
-        _: &Fid<Self::Fid>,
+        _: &FId<Self::FId>,
         _newname: &str,
-    ) -> Result<Fcall> {
+    ) -> Result<FCall> {
         Err(error::Error::No(EOPNOTSUPP))
     }
 
-    async fn runlinkat(&self, _: &Fid<Self::Fid>, _name: &str, _flags: u32) -> Result<Fcall> {
+    async fn runlinkat(&self, _: &FId<Self::FId>, _name: &str, _flags: u32) -> Result<FCall> {
         Err(error::Error::No(EOPNOTSUPP))
     }
 
@@ -220,59 +220,59 @@ pub trait Filesystem: Send {
      */
     async fn rauth(
         &self,
-        _: &Fid<Self::Fid>,
+        _: &FId<Self::FId>,
         _uname: &str,
         _aname: &str,
         _n_uname: u32,
-    ) -> Result<Fcall> {
+    ) -> Result<FCall> {
         Err(error::Error::No(EOPNOTSUPP))
     }
 
     async fn rattach(
         &self,
-        _: &Fid<Self::Fid>,
-        _afid: Option<&Fid<Self::Fid>>,
+        _: &FId<Self::FId>,
+        _afid: Option<&FId<Self::FId>>,
         _uname: &str,
         _aname: &str,
         _n_uname: u32,
-    ) -> Result<Fcall> {
+    ) -> Result<FCall> {
         Err(error::Error::No(EOPNOTSUPP))
     }
 
     /*
      * 9P2000 subset
      */
-    async fn rflush(&self, _old: Option<&Fcall>) -> Result<Fcall> {
+    async fn rflush(&self, _old: Option<&FCall>) -> Result<FCall> {
         Err(error::Error::No(EOPNOTSUPP))
     }
 
     async fn rwalk(
         &self,
-        _: &Fid<Self::Fid>,
-        _new: &Fid<Self::Fid>,
+        _: &FId<Self::FId>,
+        _new: &FId<Self::FId>,
         _wnames: &[String],
-    ) -> Result<Fcall> {
+    ) -> Result<FCall> {
         Err(error::Error::No(EOPNOTSUPP))
     }
 
-    async fn rread(&self, _: &Fid<Self::Fid>, _offset: u64, _count: u32) -> Result<Fcall> {
+    async fn rread(&self, _: &FId<Self::FId>, _offset: u64, _count: u32) -> Result<FCall> {
         Err(error::Error::No(EOPNOTSUPP))
     }
 
-    async fn rwrite(&self, _: &Fid<Self::Fid>, _offset: u64, _data: &Data) -> Result<Fcall> {
+    async fn rwrite(&self, _: &FId<Self::FId>, _offset: u64, _data: &Data) -> Result<FCall> {
         Err(error::Error::No(EOPNOTSUPP))
     }
 
-    async fn rclunk(&self, _: &Fid<Self::Fid>) -> Result<Fcall> {
+    async fn rclunk(&self, _: &FId<Self::FId>) -> Result<FCall> {
         Err(error::Error::No(EOPNOTSUPP))
     }
 
-    async fn rremove(&self, _: &Fid<Self::Fid>) -> Result<Fcall> {
+    async fn rremove(&self, _: &FId<Self::FId>) -> Result<FCall> {
         Err(error::Error::No(EOPNOTSUPP))
     }
 
-    async fn rversion(&self, msize: u32, ver: &str) -> Result<Fcall> {
-        Ok(Fcall::Rversion {
+    async fn rversion(&self, msize: u32, ver: &str) -> Result<FCall> {
+        Ok(FCall::RVersion {
             msize,
             version: match ver {
                 P92000L => ver.to_owned(),
@@ -283,63 +283,63 @@ pub trait Filesystem: Send {
 }
 
 #[rustfmt::skip]
-async fn dispatch_once<Fs, FsFid>(
+async fn dispatch_once<Fs, FsFId>(
     msg: &Msg,
     fs: Arc<Fs>,
-    fsfids: Arc<RwLock<HashMap<u32, Fid<FsFid>>>>,
-) -> Result<Fcall>
+    fsfids: Arc<RwLock<HashMap<u32, FId<FsFId>>>>,
+) -> Result<FCall>
 where
-    Fs: Filesystem<Fid = FsFid> + Send + Sync,
-    FsFid: Send + Sync + Default,
+    Fs: Filesystem<FId = FsFId> + Send + Sync,
+    FsFId: Send + Sync + Default,
 {
-    let newfid = msg.body.newfid().map(|f| Fid {
+    let newfid = msg.body.newfid().map(|f| FId {
         fid: f,
         aux: Default::default(),
     });
 
-    use crate::Fcall::*;
+    use crate::FCall::*;
     let response = {
         let fids = fsfids.read().await;
         let get_fid = |fid: &u32| fids.get(fid).ok_or(error::Error::No(EBADF));
         let get_newfid = || newfid.as_ref().ok_or(error::Error::No(EPROTO));
 
         let fut = match msg.body {
-            Tstatfs { fid }                                                     => fs.rstatfs(get_fid(&fid)?),
-            Tlopen { fid, ref flags }                                           => fs.rlopen(get_fid(&fid)?, *flags),
-            Tlcreate { fid, ref name, ref flags, ref mode, ref gid }            => fs.rlcreate(get_fid(&fid)?, name, *flags, *mode, *gid),
-            Tsymlink { fid, ref name, ref symtgt, ref gid }                     => fs.rsymlink(get_fid(&fid)?, name, symtgt, *gid),
-            Tmknod { dfid, ref name, ref mode, ref major, ref minor, ref gid }  => fs.rmknod(get_fid(&dfid)?, name, *mode, *major, *minor, *gid),
-            Trename { fid, dfid, ref name }                                     => fs.rrename(get_fid(&fid)?, get_fid(&dfid)?, name),
-            Treadlink { fid }                                                   => fs.rreadlink(get_fid(&fid)?),
-            Tgetattr { fid, ref req_mask }                                      => fs.rgetattr(get_fid(&fid)?, *req_mask),
-            Tsetattr { fid, ref valid, ref stat }                               => fs.rsetattr(get_fid(&fid)?, *valid, stat),
-            Txattrwalk { fid, newfid: _, ref name }                             => fs.rxattrwalk(get_fid(&fid)?, get_newfid()?, name),
-            Txattrcreate { fid, ref name, ref attr_size, ref flags }            => fs.rxattrcreate(get_fid(&fid)?, name, *attr_size, *flags),
-            Treaddir { fid, ref offset, ref count }                             => fs.rreaddir(get_fid(&fid)?, *offset, *count),
-            Tfsync { fid }                                                      => fs.rfsync(get_fid(&fid)?),
-            Tlock { fid, ref flock }                                            => fs.rlock(get_fid(&fid)?, flock),
-            Tgetlock { fid, ref flock }                                         => fs.rgetlock(get_fid(&fid)?, flock),
-            Tlink { dfid, fid, ref name }                                       => fs.rlink(get_fid(&dfid)?, get_fid(&fid)?, name),
-            Tmkdir { dfid, ref name, ref mode, ref gid }                        => fs.rmkdir(get_fid(&dfid)?, name, *mode, *gid),
-            Trenameat { olddirfid, ref oldname, newdirfid, ref newname }        => fs.rrenameat(get_fid(&olddirfid)?, oldname, get_fid(&newdirfid)?, newname),
-            Tunlinkat { dirfd, ref name, ref flags }                            => fs.runlinkat(get_fid(&dirfd)?, name, *flags) ,
-            Tauth { afid: _, ref uname, ref aname, ref n_uname }                => fs.rauth(get_newfid()?, uname, aname, *n_uname),
-            Tattach { fid: _, afid: _, ref uname, ref aname, ref n_uname }      => fs.rattach(get_newfid()?, None, uname, aname, *n_uname),
-            Tversion { ref msize, ref version }                                 => fs.rversion(*msize, version),
-            Tflush { oldtag: _ }                                                => fs.rflush(None),
-            Twalk { fid, newfid: _, ref wnames }                                => fs.rwalk(get_fid(&fid)?, get_newfid()?, wnames),
-            Tread { fid, ref offset, ref count }                                => fs.rread(get_fid(&fid)?, *offset, *count),
-            Twrite { fid, ref offset, ref data }                                => fs.rwrite(get_fid(&fid)?, *offset, data),
-            Tclunk { fid }                                                      => fs.rclunk(get_fid(&fid)?),
-            Tremove { fid }                                                     => fs.rremove(get_fid(&fid)?),
+            TStatFs { fid }                                                     => fs.rstatfs(get_fid(&fid)?),
+            TlOpen { fid, ref flags }                                           => fs.rlopen(get_fid(&fid)?, *flags),
+            TlCreate { fid, ref name, ref flags, ref mode, ref gid }            => fs.rlcreate(get_fid(&fid)?, name, *flags, *mode, *gid),
+            TSymlink { fid, ref name, ref symtgt, ref gid }                     => fs.rsymlink(get_fid(&fid)?, name, symtgt, *gid),
+            TMkNod { dfid, ref name, ref mode, ref major, ref minor, ref gid }  => fs.rmknod(get_fid(&dfid)?, name, *mode, *major, *minor, *gid),
+            TRename { fid, dfid, ref name }                                     => fs.rrename(get_fid(&fid)?, get_fid(&dfid)?, name),
+            TReadLink { fid }                                                   => fs.rreadlink(get_fid(&fid)?),
+            TGetAttr { fid, ref req_mask }                                      => fs.rgetattr(get_fid(&fid)?, *req_mask),
+            TSetAttr { fid, ref valid, ref stat }                               => fs.rsetattr(get_fid(&fid)?, *valid, stat),
+            TxAttrWalk { fid, newfid: _, ref name }                             => fs.rxattrwalk(get_fid(&fid)?, get_newfid()?, name),
+            TxAttrCreate { fid, ref name, ref attr_size, ref flags }            => fs.rxattrcreate(get_fid(&fid)?, name, *attr_size, *flags),
+            TReadDir { fid, ref offset, ref count }                             => fs.rreaddir(get_fid(&fid)?, *offset, *count),
+            TFSync { fid }                                                      => fs.rfsync(get_fid(&fid)?),
+            TLock { fid, ref flock }                                            => fs.rlock(get_fid(&fid)?, flock),
+            TGetLock { fid, ref flock }                                         => fs.rgetlock(get_fid(&fid)?, flock),
+            TLink { dfid, fid, ref name }                                       => fs.rlink(get_fid(&dfid)?, get_fid(&fid)?, name),
+            TMkDir { dfid, ref name, ref mode, ref gid }                        => fs.rmkdir(get_fid(&dfid)?, name, *mode, *gid),
+            TRenameAt { olddirfid, ref oldname, newdirfid, ref newname }        => fs.rrenameat(get_fid(&olddirfid)?, oldname, get_fid(&newdirfid)?, newname),
+            TUnlinkAt { dirfd, ref name, ref flags }                            => fs.runlinkat(get_fid(&dirfd)?, name, *flags) ,
+            TAuth { afid: _, ref uname, ref aname, ref n_uname }                => fs.rauth(get_newfid()?, uname, aname, *n_uname),
+            TAttach { fid: _, afid: _, ref uname, ref aname, ref n_uname }      => fs.rattach(get_newfid()?, None, uname, aname, *n_uname),
+            TVersion { ref msize, ref version }                                 => fs.rversion(*msize, version),
+            TFlush { oldtag: _ }                                                => fs.rflush(None),
+            TWalk { fid, newfid: _, ref wnames }                                => fs.rwalk(get_fid(&fid)?, get_newfid()?, wnames),
+            TRead { fid, ref offset, ref count }                                => fs.rread(get_fid(&fid)?, *offset, *count),
+            TWrite { fid, ref offset, ref data }                                => fs.rwrite(get_fid(&fid)?, *offset, data),
+            TClunk { fid }                                                      => fs.rclunk(get_fid(&fid)?),
+            TRemove { fid }                                                     => fs.rremove(get_fid(&fid)?),
             _                                                                   => return Err(error::Error::No(EOPNOTSUPP)),
         };
 
         fut.await?
     };
 
-    /* Drop the fid which the Tclunk contains */
-    if let Tclunk { fid } = msg.body {
+    /* Drop the fid which the TClunk contains */
+    if let TClunk { fid } = msg.body {
         let mut fids = fsfids.write().await;
         fids.remove(&fid);
     }
@@ -388,7 +388,7 @@ where
         tokio::spawn(async move {
             let response_fcall = dispatch_once(&msg, fs, fids).await.unwrap_or_else(|e| {
                 error!("{:?}: Error: \"{}\": {:?}", MsgType::from(&msg.body), e, e);
-                Fcall::Rlerror {
+                FCall::RlError {
                     ecode: e.errno() as u32,
                 }
             });
