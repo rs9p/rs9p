@@ -14,4 +14,4 @@ target/
 
 # mount directory
 mount/
-exportdir/
+testdir/

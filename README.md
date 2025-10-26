@@ -5,41 +5,49 @@ Tokio-based asynchronous filesystems library using 9P2000.L protocol, an extende
 ## unpfs
 
 `unpfs` is the reference implementation of a file server which exports your filesystem.
-You can build unpfs with the following commands below:
-
+You can install unpfs from crates.io:
 ```bash
-cargo build -p unpfs --verbose --release
+cargo install unpfs
 ```
 
-and run unpfs with the following command to export `/exportdir`:
+or build it from source with the following commands:
 
 ```bash
-# TCP
-cargo run --release -- 'tcp!0.0.0.0!564' /exportdir
+git clone https://github.com/rs9p/rs9p
+cd rs9p
+cargo install crates/unpfs
+```
 
+and run unpfs with the following command to export `./testdir`:
+
+```bash
 # Unix domain socket:
 #  port number is a suffix to the unix domain socket
 #  'unix!/tmp/unpfs-socket!n' creates `/tmp/unpfs-socket:n`
-cargo run --release -- 'unix!/tmp/unpfs-socket!0' /exportdir
-
-# With maximum depth limit (prevents infinite recursion)
-cargo run --release -- --max-depth 100 'tcp!0.0.0.0!564' /exportdir
-```
-
-**Important:** If you mount the filesystem inside its own export directory, you can create infinite recursion (e.g., exporting `/home/user` and mounting at `/home/user/mnt` creates `/home/user/mnt/mnt/mnt/...`). Use the `--max-depth` option to prevent this:
-
-```bash
-cargo run --release -- --max-depth 50 'tcp!0.0.0.0!564' /exportdir
+unpfs 'unix!/tmp/unpfs-socket!0' testdir
 ```
 
 You are now ready to import/mount the remote filesystem.
-Let's mount it at `/mountdir`:
+Let's mount it at `./mount`:
+
+```bash
+# Unix domain socket
+sudo mount -t 9p -o version=9p2000.L,trans=unix,uname=$USER /tmp/unpfs-socket:0 ./mount
+```
+
+The default transport is normally TCP, but the port its listening on is in the restricted range,
+which requires root permissions. That's why we started with the unix domain socket, because it's
+more likely to just work.
+
+But TCP is obviously supported as well. Here's the same commands as above, but using TCP this time:
+
+```bash
+sudo unpfs 'tcp!0.0.0.0!564' testdir
+```
 
 ```bash
 # TCP
-sudo mount -t 9p -o version=9p2000.L,trans=tcp,port=564,uname=$USER 127.0.0.1 /mountdir
-# Unix domain socket
-sudo mount -t 9p -o version=9p2000.L,trans=unix,uname=$USER /tmp/unpfs-socket:0 /mountdir
+sudo mount -t 9p -o version=9p2000.L,trans=tcp,port=564,uname=$USER 127.0.0.1 ./mount
 ```
 
 | Mount option | Value                                              |
