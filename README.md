@@ -22,6 +22,15 @@ cargo run --release -- 'tcp!0.0.0.0!564' /exportdir
 #  port number is a suffix to the unix domain socket
 #  'unix!/tmp/unpfs-socket!n' creates `/tmp/unpfs-socket:n`
 cargo run --release -- 'unix!/tmp/unpfs-socket!0' /exportdir
+
+# With maximum depth limit (prevents infinite recursion)
+cargo run --release -- --max-depth 100 'tcp!0.0.0.0!564' /exportdir
+```
+
+**Important:** If you mount the filesystem inside its own export directory, you can create infinite recursion (e.g., exporting `/home/user` and mounting at `/home/user/mnt` creates `/home/user/mnt/mnt/mnt/...`). Use the `--max-depth` option to prevent this:
+
+```bash
+cargo run --release -- --max-depth 50 'tcp!0.0.0.0!564' /exportdir
 ```
 
 You are now ready to import/mount the remote filesystem.

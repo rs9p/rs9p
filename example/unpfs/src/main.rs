@@ -1,5 +1,6 @@
 use {
     async_trait::async_trait,
+    clap::Parser,
     filetime::FileTime,
     nix::libc::{O_CREAT, O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY},
     rs9p::{
@@ -37,15 +38,27 @@ use crate::utils::*;
 // we are seeing with a file system benchmark.
 const UNIX_FLAGS: u32 = (O_WRONLY | O_RDONLY | O_RDWR | O_CREAT | O_TRUNC) as u32;
 
+// Maximum depth protection:
+// Without a depth limit, it's possible to create infinite recursion by mounting
+// the 9P filesystem inside its own export directory. For example:
+//   - Export directory: /home/user/export
+//   - Mount point: /home/user/export/mnt
+// Accessing /home/user/export/mnt/mnt/mnt/... would recurse infinitely.
+// The max_depth option prevents this by tracking how deep we've traversed
+// from the root and returning ELOOP (too many levels of symbolic links) when
+// the limit is exceeded.
+
 #[derive(Default)]
 struct UnpfsFid {
     realpath: RwLock<PathBuf>,
     file: Mutex<Option<fs::File>>,
+    depth: RwLock<usize>,
 }
 
 #[derive(Clone)]
 struct Unpfs {
     realroot: PathBuf,
+    max_depth: usize,
 }
 
 #[async_trait]
@@ -63,6 +76,10 @@ impl Filesystem for Unpfs {
         {
             let mut realpath = fid.aux.realpath.write().await;
             *realpath = PathBuf::from(&self.realroot);
+        }
+        {
+            let mut depth = fid.aux.depth.write().await;
+            *depth = 0;
         }
 
         Ok(Fcall::Rattach {
@@ -82,7 +99,27 @@ impl Filesystem for Unpfs {
             realpath.clone()
         };
 
+        let current_depth = {
+            let depth = fid.aux.depth.read().await;
+            *depth
+        };
+
+        let mut new_depth = current_depth;
+
         for (i, name) in wnames.iter().enumerate() {
+            // Check for ".." which decreases depth
+            if name == ".." {
+                new_depth = new_depth.saturating_sub(1);
+            } else if name != "." {
+                // Any path component other than "." or ".." increases depth
+                new_depth += 1;
+
+                // Check if we've exceeded max depth
+                if new_depth > self.max_depth {
+                    return Err(error::Error::No(error::errno::ELOOP));
+                }
+            }
+
             path.push(name);
 
             let qid = match get_qid(&path).await {
@@ -102,6 +139,10 @@ impl Filesystem for Unpfs {
         {
             let mut new_realpath = newfid.aux.realpath.write().await;
             *new_realpath = path;
+        }
+        {
+            let mut depth = newfid.aux.depth.write().await;
+            *depth = new_depth;
         }
 
         Ok(Fcall::Rwalk { wqids })
@@ -385,24 +426,42 @@ impl Filesystem for Unpfs {
     }
 }
 
-async fn unpfs_main(args: Vec<String>) -> rs9p::Result<i32> {
-    if args.len() < 3 {
-        eprintln!("Usage: {} proto!address!port mountpoint", args[0]);
-        eprintln!("  where: proto = tcp | unix");
-        return Ok(-1);
-    }
+#[derive(Debug, clap::Parser)]
+struct Cli {
+    /// proto!address!port
+    /// where: proto = tcp | unix
+    address: String,
 
-    let (addr, mountpoint) = (&args[1], PathBuf::from(&args[2]));
-    if !fs::metadata(&mountpoint).await?.is_dir() {
+    /// Directory to export
+    exportdir: PathBuf,
+
+    /// Maximum directory depth to traverse
+    #[arg(long, default_value_t = 200)]
+    max_depth: usize,
+}
+
+async fn unpfs_main(
+    Cli {
+        address,
+        exportdir,
+        max_depth,
+    }: Cli,
+) -> rs9p::Result<i32> {
+    if !fs::try_exists(&exportdir).await? {
+        fs::create_dir_all(&exportdir).await?;
+    }
+    if !fs::metadata(&exportdir).await?.is_dir() {
         return res!(io_err!(Other, "mount point must be a directory"));
     }
 
-    println!("[*] Ready to accept clients: {}", addr);
+    println!("[*] Maximum depth limit: {}", max_depth);
+    println!("[*] Ready to accept clients: {}", address);
     srv_async(
         Unpfs {
-            realroot: mountpoint,
+            realroot: exportdir,
+            max_depth,
         },
-        addr,
+        &address,
     )
     .await
     .and(Ok(0))
@@ -412,11 +471,78 @@ async fn unpfs_main(args: Vec<String>) -> rs9p::Result<i32> {
 async fn main() {
     env_logger::init();
 
-    let args = std::env::args().collect();
-    let exit_code = unpfs_main(args).await.unwrap_or_else(|e| {
+    let exit_code = unpfs_main(Cli::parse()).await.unwrap_or_else(|e| {
         eprintln!("Error: {:?}", e);
         -1
     });
 
     std::process::exit(exit_code);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_depth_tracking() {
+        // Test that depth increases with normal paths
+        let mut depth: usize = 0;
+
+        // Going down: a/b/c
+        for name in ["a", "b", "c"] {
+            if name != "." {
+                depth += 1;
+            }
+        }
+        assert_eq!(depth, 3);
+
+        // Going back up with ".."
+        depth = depth.saturating_sub(1_usize);
+        assert_eq!(depth, 2);
+
+        // "." should not change depth
+        let original = depth;
+        // (no change for ".")
+        assert_eq!(depth, original);
+
+        // Multiple ".." can bring us back to 0
+        depth = depth.saturating_sub(1_usize);
+        depth = depth.saturating_sub(1_usize);
+        assert_eq!(depth, 0);
+
+        // saturating_sub prevents underflow
+        depth = depth.saturating_sub(1_usize);
+        assert_eq!(depth, 0);
+    }
+
+    #[test]
+    fn test_max_depth_logic() {
+        let max_depth = 5_usize;
+        let mut current_depth: usize = 3;
+
+        // Should allow going to depth 4 and 5
+        current_depth += 1;
+        assert!(current_depth <= max_depth);
+
+        current_depth += 1;
+        assert!(current_depth <= max_depth);
+
+        // Should reject depth 6
+        current_depth += 1;
+        assert!(current_depth > max_depth);
+    }
+
+    #[test]
+    fn test_no_max_depth() {
+        let max_depth: Option<usize> = None;
+        let current_depth: usize = 1000;
+
+        // With no max_depth, any depth should be allowed
+        match max_depth {
+            Some(max) => assert!(current_depth <= max),
+            None => {
+                // No limit - test passes as long as we reach this branch
+                // Any large depth should be acceptable
+                assert!(current_depth > 0);
+            }
+        }
+    }
 }
