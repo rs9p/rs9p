@@ -13,7 +13,7 @@ use {
     async_trait::async_trait,
     bytes::buf::{Buf, BufMut},
     futures::sink::SinkExt,
-    log::{error, info},
+    log::{debug, error, info},
     std::{
         collections::HashMap,
         path::{Path, PathBuf},
@@ -745,7 +745,7 @@ where
         let bytes = bytes?;
 
         let msg = serialize::read_msg(&mut bytes.reader())?;
-        info!("\t← {:?}", msg);
+        debug!("\t← {:?}", msg);
 
         let fids = fsfids.clone();
         let fs = filesystem.clone();
@@ -779,7 +779,7 @@ where
                         return;
                     }
                 }
-                info!("\t→ {:?}", response);
+                debug!("\t→ {:?}", response);
             }
         });
     }
@@ -795,7 +795,7 @@ where
 
     loop {
         let (stream, peer) = listener.accept().await?;
-        info!("accepted: {:?}", peer);
+        debug!("accepted: {:?}", peer);
 
         let fs = filesystem.clone();
         tokio::spawn(async move {
