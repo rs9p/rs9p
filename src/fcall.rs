@@ -335,7 +335,7 @@ impl From<nix::sys::statvfs::Statvfs> for Statfs {
             bavail: buf.blocks_available(),
             files: buf.files(),
             ffree: buf.files_free(),
-            fsid: buf.filesystem_id() as u64,
+            fsid: buf.filesystem_id(),
             namelen: buf.name_max() as u32,
         }
     }
@@ -398,8 +398,8 @@ impl<'a> From<&'a fs::Metadata> for Stat {
             gid: attr.gid(),
             nlink: attr.nlink(),
             rdev: attr.rdev(),
-            size: attr.size() as u64,
-            blksize: attr.blksize() as u64,
+            size: attr.size(),
+            blksize: attr.blksize(),
             blocks: attr.blocks(),
             atime: Time {
                 sec: attr.atime() as u64,

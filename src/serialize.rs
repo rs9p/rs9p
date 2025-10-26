@@ -17,18 +17,8 @@ macro_rules! decode {
     };
 }
 
-// Create an unintialized buffer
-// Safe to use only for writing data to it
-fn create_buffer(size: usize) -> Vec<u8> {
-    let mut buffer = Vec::with_capacity(size);
-    unsafe {
-        buffer.set_len(size);
-    }
-    buffer
-}
-
 fn read_exact<R: Read + ?Sized>(r: &mut R, size: usize) -> Result<Vec<u8>> {
-    let mut buf = create_buffer(size);
+    let mut buf = vec![0; size];
     r.read_exact(&mut buf[..]).and(Ok(buf))
 }
 
