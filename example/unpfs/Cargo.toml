@@ -3,7 +3,8 @@
 name = "unpfs"
 version = "0.0.1"
 authors = [ "afpacket <afpacket@gmail.com>", "Steve Biedermann (hardliner66) <hardliner66@example.com>" ]
-edition = "2018"
+edition = "2024"
+publish = false
 
 [[bin]]
 name = "unpfs"

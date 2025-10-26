@@ -29,7 +29,7 @@ use {
 };
 
 /// Represents a fid of clients holding associated `Filesystem::Fid`.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Fid<T> {
     /// Raw client side fid.
     fid: u32,
@@ -442,7 +442,7 @@ impl std::ops::DerefMut for DeleteOnDrop {
 impl Drop for DeleteOnDrop {
     fn drop(&mut self) {
         // There's no way to return a useful error here
-        let _ = std::fs::remove_file(&self.path).unwrap();
+        std::fs::remove_file(&self.path).unwrap();
     }
 }
 

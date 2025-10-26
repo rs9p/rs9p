@@ -1,6 +1,6 @@
 [package]
 name = "rs9p"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 authors = ["Ryo Munakata (pfpacket) <afpacket@gmail.com>", "Steve Biedermann (hardliner66) <hardliner66@example.com>"]
 description = "Filesystems library using 9P2000.L protocol, an extended variant of 9P from Plan 9"

@@ -95,7 +95,7 @@ pub mod p92000 {
     /// Plan 9 Namespace metadata d(somewhat like a unix fstat)
     ///
     /// NOTE: Defined as `Dir` in libc.h of Plan 9
-    #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
     pub struct Stat {
         /// Server type
         pub typ: u16,
@@ -143,7 +143,7 @@ pub mod p92000 {
 
 bitflags! {
     /// File lock type, Flock.typ
-    #[derive(Copy, Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+    #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
     pub struct LockType: u8 {
         const RDLOCK    = 0;
         const WRLOCK    = 1;
@@ -153,7 +153,7 @@ bitflags! {
 
 bitflags! {
     /// File lock flags, Flock.flags
-    #[derive(Copy, Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+    #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
     pub struct LockFlag: u32 {
         #[doc = "Blocking request"]
         const BLOCK     = 1;
@@ -164,7 +164,7 @@ bitflags! {
 
 bitflags! {
     /// File lock status
-    #[derive(Copy, Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+    #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
     pub struct LockStatus: u8 {
         const SUCCESS   = 0;
         const BLOCKED   = 1;
@@ -180,7 +180,7 @@ bitflags! {
     ///
     /// # Protocol
     /// 9P2000/9P2000.L
-    #[derive(Copy, Debug, Default, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+    #[derive(Copy, Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
     pub struct QidType: u8 {
         #[doc = "Type bit for directories"]
         const DIR       = 0x80;
@@ -230,7 +230,7 @@ bitflags! {
     ///
     /// # Protocol
     /// 9P2000.L
-    #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+    #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
     pub struct GetattrMask: u64 {
         const MODE          = 0x00000001;
         const NLINK         = 0x00000002;
@@ -263,7 +263,7 @@ bitflags! {
     ///
     /// # Protocol
     /// 9P2000.L
-    #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+    #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
     pub struct SetattrMask: u32 {
         const MODE      = 0x00000001;
         const UID       = 0x00000002;
@@ -283,7 +283,7 @@ bitflags! {
 ///
 /// # Protocol
 /// 9P2000/9P2000.L
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Qid {
     /// Specify whether the file is a directory, append-only file, etc.
     pub typ: QidType,
@@ -303,7 +303,7 @@ impl Qid {
 ///
 /// # Protocol
 /// 9P2000.L
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Statfs {
     /// Type of file system
     pub typ: u32,
@@ -345,7 +345,7 @@ impl From<nix::sys::statvfs::Statvfs> for Statfs {
 ///
 /// # Protocol
 /// 9P2000.L
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Time {
     pub sec: u64,
     pub nsec: u64,
@@ -357,7 +357,7 @@ pub struct Time {
 ///
 /// # Protocol
 /// 9P2000.L
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Stat {
     /// Protection
     pub mode: u32,
@@ -418,7 +418,7 @@ impl<'a> From<&'a fs::Metadata> for Stat {
 }
 
 /// Subset of `Stat` used for `Tsetattr`
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SetAttr {
     pub mode: u32,
     pub uid: u32,
@@ -432,7 +432,7 @@ pub struct SetAttr {
 ///
 /// # Protocol
 /// 9P2000.L
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct DirEntry {
     /// Qid for this directory
     pub qid: Qid,
@@ -457,7 +457,7 @@ impl DirEntry {
 }
 
 /// Directory entry array
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct DirEntryData {
     pub data: Vec<DirEntry>,
 }
@@ -494,14 +494,14 @@ impl Default for DirEntryData {
 ///
 /// # Protocol
 /// 9P2000/9P2000.L
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Data(pub Vec<u8>);
 
 /// Similar to Linux `struct flock`
 ///
 /// # Protocol
 /// 9P2000.L
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Flock {
     pub typ: LockType,
     pub flags: LockFlag,
@@ -515,7 +515,7 @@ pub struct Flock {
 ///
 /// # Protocol
 /// 9P2000.L
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Getlock {
     pub typ: LockType,
     pub start: u64,
@@ -527,7 +527,7 @@ pub struct Getlock {
 // Commented out the types not used in 9P2000.L
 enum_from_primitive! {
     #[doc = "Message type, 9P operations"]
-    #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
     pub enum MsgType {
         // 9P2000.L
         Tlerror         = 6,    // Illegal, never used
@@ -713,7 +713,7 @@ impl<'a> From<&'a Fcall> for MsgType {
 }
 
 /// A data type encapsulating the various 9P messages
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Fcall {
     // 9P2000.L
     Rlerror {
@@ -1010,7 +1010,7 @@ impl Fcall {
 }
 
 /// Envelope for 9P messages
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Msg {
     /// Chosen and used by the client to identify the message.
     /// The reply to the message will have the same tag

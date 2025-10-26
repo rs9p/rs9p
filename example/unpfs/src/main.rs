@@ -3,7 +3,7 @@ use {
     filetime::FileTime,
     nix::libc::{O_CREAT, O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY},
     rs9p::{
-        srv::{Fid, Filesystem, srv_async},
+        srv::{srv_async, Fid, Filesystem},
         *,
     },
     std::{
@@ -13,10 +13,10 @@ use {
     },
     tokio::{
         fs,
-        io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt, ErrorKind},
+        io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt},
         sync::{Mutex, RwLock},
     },
-    tokio_stream::{StreamExt, wrappers::ReadDirStream},
+    tokio_stream::{wrappers::ReadDirStream, StreamExt},
 };
 
 mod utils;
@@ -377,7 +377,7 @@ impl Filesystem for Unpfs {
 
         let fs = tokio::task::spawn_blocking(move || nix::sys::statvfs::statvfs(&path))
             .await
-            .map_err(|e| Error::Io(io::Error::new(ErrorKind::Other, e)))??;
+            .map_err(|e| Error::Io(io::Error::other(e)))??;
 
         Ok(Fcall::Rstatfs {
             statfs: From::from(fs),
