@@ -1,9 +1,13 @@
-
 [package]
 name = "unpfs"
-version = "0.1.0"
-authors = [ "afpacket <afpacket@gmail.com>", "Steve Biedermann (hardliner66) <hardliner66@gmail.com>" ]
-edition = "2024"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+repository.workspace = true
+license-file.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [dependencies]
 async-trait.workspace = true
@@ -14,6 +18,4 @@ env_logger = "0.11.8"
 filetime = "0.2.26"
 tokio-stream = { version = "0.1.17", features = ["fs"] }
 clap = { version = "4.5.50", features = ["derive"] }
-
-[dependencies.rs9p]
-path = "../../crates/rs9p"
+rs9p.workspace = true
