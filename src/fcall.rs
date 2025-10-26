@@ -92,7 +92,7 @@ pub mod p92000 {
         pub const EXEC: u32 = 0x1;
     }
 
-    /// Plan 9 Namespace metadata (somewhat like a unix fstat)
+    /// Plan 9 Namespace metadata d(somewhat like a unix fstat)
     ///
     /// NOTE: Defined as `Dir` in libc.h of Plan 9
     #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -143,6 +143,7 @@ pub mod p92000 {
 
 bitflags! {
     /// File lock type, Flock.typ
+    #[derive(Copy, Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
     pub struct LockType: u8 {
         const RDLOCK    = 0;
         const WRLOCK    = 1;
@@ -152,6 +153,7 @@ bitflags! {
 
 bitflags! {
     /// File lock flags, Flock.flags
+    #[derive(Copy, Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
     pub struct LockFlag: u32 {
         #[doc = "Blocking request"]
         const BLOCK     = 1;
@@ -162,6 +164,7 @@ bitflags! {
 
 bitflags! {
     /// File lock status
+    #[derive(Copy, Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
     pub struct LockStatus: u8 {
         const SUCCESS   = 0;
         const BLOCKED   = 1;
@@ -177,7 +180,7 @@ bitflags! {
     ///
     /// # Protocol
     /// 9P2000/9P2000.L
-    #[derive(Default)]
+    #[derive(Copy, Debug, Default, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
     pub struct QidType: u8 {
         #[doc = "Type bit for directories"]
         const DIR       = 0x80;
@@ -227,6 +230,7 @@ bitflags! {
     ///
     /// # Protocol
     /// 9P2000.L
+    #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
     pub struct GetattrMask: u64 {
         const MODE          = 0x00000001;
         const NLINK         = 0x00000002;
@@ -259,6 +263,7 @@ bitflags! {
     ///
     /// # Protocol
     /// 9P2000.L
+    #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
     pub struct SetattrMask: u32 {
         const MODE      = 0x00000001;
         const UID       = 0x00000002;
@@ -395,7 +400,7 @@ impl<'a> From<&'a fs::Metadata> for Stat {
             rdev: attr.rdev(),
             size: attr.size() as u64,
             blksize: attr.blksize() as u64,
-            blocks: attr.blocks() as u64,
+            blocks: attr.blocks(),
             atime: Time {
                 sec: attr.atime() as u64,
                 nsec: attr.atime_nsec() as u64,
@@ -471,7 +476,7 @@ impl DirEntryData {
     }
 
     pub fn size(&self) -> u32 {
-        self.data.iter().fold(0, |a, e| a + e.size()) as u32
+        self.data.iter().fold(0, |a, e| a + e.size())
     }
 
     pub fn push(&mut self, entry: DirEntry) {

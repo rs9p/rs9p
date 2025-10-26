@@ -6,13 +6,15 @@
 //! By contrast, in 9P2000.L, errors are represented as numbers (errno).
 //! Using the Linux system errno numbers is the expected behaviour.
 
+use nix::errno::Errno;
+
 use crate::error::errno::*;
 use std::io::ErrorKind::*;
 use std::{fmt, io};
 
 fn errno_from_io_error(e: &io::Error) -> nix::errno::Errno {
     e.raw_os_error()
-        .map(nix::errno::from_i32)
+        .map(Errno::from_raw)
         .unwrap_or_else(|| match e.kind() {
             NotFound => ENOENT,
             PermissionDenied => EPERM,
