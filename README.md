@@ -2,6 +2,78 @@
 
 Tokio-based asynchronous filesystems library using 9P2000.L protocol, an extended variant of 9P from Plan 9.
 
+## Features
+
+- 🚀 **Async/Await**: Built on tokio for high-performance async I/O
+- 🔒 **Memory Safe**: `#![forbid(unsafe_code)]` - no unsafe code
+- 🔌 **Multiple Transports**: TCP and Unix domain sockets
+- 📦 **9P2000.L Protocol**: Full support for Linux-extended 9P
+- 🛠️ **Easy to Use**: Simple trait-based API for building custom filesystems
+
+## Documentation
+
+- **[API Documentation](https://docs.rs/rs9p)** - Full API reference on docs.rs
+- **[Filesystem Trait Guide](docs/filesystem-trait-guide.md)** - Complete guide to implementing custom filesystems
+- **[Maximum Depth Protection](docs/max-depth.md)** - Recursive depth protection to prevent infinite loops
+- **[Documentation Index](docs/README.md)** - All available documentation
+
+## Quick Start
+
+### Using as a Library
+
+Add to your `Cargo.toml`:
+```toml
+[dependencies]
+rs9p = "0.5"
+async-trait = "0.1"
+tokio = { version = "1", features = ["full"] }
+```
+
+Implement the `Filesystem` trait:
+```rust
+use rs9p::{srv::{Filesystem, Fid, srv_async}, Result, Fcall, Qid, QidType};
+use async_trait::async_trait;
+
+#[derive(Clone)]
+struct MyFs;
+
+#[derive(Default)]
+struct MyFid;
+
+#[async_trait]
+impl Filesystem for MyFs {
+    type Fid = MyFid;
+
+    async fn rattach(
+        &self,
+        _fid: &Fid<Self::Fid>,
+        _afid: Option<&Fid<Self::Fid>>,
+        _uname: &str,
+        _aname: &str,
+        _n_uname: u32,
+    ) -> Result<Fcall> {
+        Ok(Fcall::Rattach {
+            qid: Qid {
+                typ: QidType::DIR,
+                version: 0,
+                path: 0,
+            }
+        })
+    }
+
+    // Implement other methods...
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    srv_async(MyFs, "tcp!127.0.0.1!564").await
+}
+```
+
+See the [Filesystem Trait Guide](docs/filesystem-trait-guide.md) for complete examples.
+
+## unpfs - Reference Implementation
+
 ## unpfs
 
 `unpfs` is the reference implementation of a file server which exports your filesystem.
@@ -58,6 +130,43 @@ sudo mount -t 9p -o version=9p2000.L,trans=tcp,port=564,uname=$USER 127.0.0.1 ./
 | uname        | user name to attempt mount as on the remote server |
 
 See [v9fs documentation](https://www.kernel.org/doc/Documentation/filesystems/9p.txt) for more details.
+
+### Security Note
+
+**Important:** If you mount the filesystem inside its own export directory, you can create infinite recursion (e.g., exporting `/home/user` and mounting at `/home/user/mnt` creates `/home/user/mnt/mnt/mnt/...`). Use the `--max-depth` option to prevent this:
+
+```bash
+unpfs --max-depth 100 'tcp!0.0.0.0!564' testdir
+```
+
+See [Maximum Depth Protection](docs/max-depth.md) for details.
+
+## Protocol Reference
+
+- [Linux Kernel 9P Documentation](https://www.kernel.org/doc/Documentation/filesystems/9p.txt)
+- [v9fs Mount Options](https://www.kernel.org/doc/html/latest/filesystems/9p.html)
+- [Plan 9 Manual - intro(5)](http://man.cat-v.org/plan_9/5/intro)
+
+## Contributing
+
+Contributions are welcome! Please:
+
+1. Check existing issues or create a new one
+2. Fork the repository
+3. Create a feature branch
+4. Add tests for new functionality
+5. Ensure `cargo test`, `cargo clippy`, and `cargo fmt --check` pass
+6. Submit a pull request
+
+## Safety and Security
+
+- **Memory Safe**: No unsafe code - all operations use safe Rust
+- **Error Handling**: Comprehensive error handling prevents panics
+- **Path Validation**: Implement proper validation to prevent directory traversal
+- **Depth Limits**: Use max-depth to prevent infinite recursion
+- **Authentication**: Default auth returns `EOPNOTSUPP` - implement for production use
+
+See the [Filesystem Trait Guide](docs/filesystem-trait-guide.md) for security best practices.
 
 ## License
 
