@@ -16,14 +16,12 @@ and run unpfs with the following command to export `/exportdir`:
 
 ```bash
 # TCP
-cargo run --release 'tcp!0.0.0.0!564' /exportdir
-# or
-./target/release/unpfs 'tcp!0.0.0.0!564' /exportdir
+cargo run --release -- 'tcp!0.0.0.0!564' /exportdir
 
 # Unix domain socket:
 #  port number is a suffix to the unix domain socket
 #  'unix!/tmp/unpfs-socket!n' creates `/tmp/unpfs-socket:n`
-cargo run --release 'unix!/tmp/unpfs-socket!0' /exportdir
+cargo run --release -- 'unix!/tmp/unpfs-socket!0' /exportdir
 ```
 
 You are now ready to import/mount the remote filesystem.

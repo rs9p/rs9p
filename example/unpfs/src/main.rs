@@ -3,20 +3,16 @@ use {
     filetime::FileTime,
     nix::libc::{O_CREAT, O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY},
     rs9p::{
-        srv::{srv_async, Fid, Filesystem},
+        srv::{Fid, Filesystem, srv_async},
         *,
     },
-    std::{
-        io::SeekFrom,
-        os::unix::{fs::PermissionsExt, io::FromRawFd},
-        path::PathBuf,
-    },
+    std::{io::SeekFrom, os::unix::fs::PermissionsExt, path::PathBuf},
     tokio::{
         fs,
         io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt},
         sync::{Mutex, RwLock},
     },
-    tokio_stream::{wrappers::ReadDirStream, StreamExt},
+    tokio_stream::{StreamExt, wrappers::ReadDirStream},
 };
 
 mod utils;
@@ -236,9 +232,7 @@ impl Filesystem for Unpfs {
 
             {
                 let mut file = fid.aux.file.lock().await;
-                *file = Some(fs::File::from_std(unsafe {
-                    std::fs::File::from_raw_fd(fd)
-                }));
+                *file = Some(fs::File::from_std(fd.into()));
             }
         }
 
@@ -268,9 +262,7 @@ impl Filesystem for Unpfs {
         }
         {
             let mut file = fid.aux.file.lock().await;
-            *file = Some(fs::File::from_std(unsafe {
-                std::fs::File::from_raw_fd(fd)
-            }));
+            *file = Some(fs::File::from_std(fd.into()));
         }
 
         Ok(Fcall::Rlcreate { qid, iounit: 0 })
