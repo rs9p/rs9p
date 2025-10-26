@@ -1,6 +1,6 @@
 //! Serialize/deserialize 9P messages into/from binary.
 
-use crate::fcall::*;
+use crate::{fcall::*, io_err, res};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use num_traits::FromPrimitive;
 use std::io::{Read, Result};

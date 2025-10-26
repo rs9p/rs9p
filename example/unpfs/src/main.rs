@@ -6,10 +6,14 @@ use {
         srv::{Fid, Filesystem, srv_async},
         *,
     },
-    std::{io::SeekFrom, os::unix::fs::PermissionsExt, path::PathBuf},
+    std::{
+        io::{self, SeekFrom},
+        os::unix::fs::PermissionsExt,
+        path::PathBuf,
+    },
     tokio::{
         fs,
-        io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt},
+        io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt, ErrorKind},
         sync::{Mutex, RwLock},
     },
     tokio_stream::{StreamExt, wrappers::ReadDirStream},
@@ -274,7 +278,7 @@ impl Filesystem for Unpfs {
             let file = file.as_mut().ok_or_else(|| INVALID_FID!())?;
             file.seek(SeekFrom::Start(offset)).await?;
 
-            let mut buf = create_buffer(count as usize);
+            let mut buf = vec![0; count as usize];
             let bytes = file.read(&mut buf[..]).await?;
             buf.truncate(bytes);
             buf
@@ -371,10 +375,9 @@ impl Filesystem for Unpfs {
             realpath.clone()
         };
 
-        //let fs = nix::sys::statvfs::statvfs(&path)?;
         let fs = tokio::task::spawn_blocking(move || nix::sys::statvfs::statvfs(&path))
             .await
-            .unwrap()?;
+            .map_err(|e| Error::Io(io::Error::new(ErrorKind::Other, e)))??;
 
         Ok(Fcall::Rstatfs {
             statfs: From::from(fs),

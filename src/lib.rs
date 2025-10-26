@@ -1,3 +1,4 @@
+#![deny(unsafe_code)]
 //! Filesystems library using 9P2000.L protocol, an extended variant of 9P from Plan 9.
 //!
 //! 9P protocol is originally developed for Plan 9 distributed OS.
@@ -10,16 +11,12 @@
 //!
 //! rs9p is a library to develop 9P2000.L virtual filesystems in Rust.
 //! All you have to do is to implement `Filesystem` trait.
-
-#[macro_use]
-extern crate log;
-
-#[macro_use]
-mod utils;
 pub mod error;
 pub mod fcall;
 pub mod serialize;
 pub mod srv;
+#[macro_use]
+pub mod utils;
 
 pub use crate::error::Error;
 pub use crate::error::errno;

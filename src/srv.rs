@@ -5,16 +5,20 @@
 
 use {
     crate::{
-        error,
-        error::errno::*,
+        error::{self, errno::*},
         fcall::*,
-        serialize,
+        io_err, serialize,
         utils::{self, Result},
     },
     async_trait::async_trait,
     bytes::buf::{Buf, BufMut},
     futures::sink::SinkExt,
-    std::{collections::HashMap, sync::Arc},
+    log::{error, info},
+    std::{
+        collections::HashMap,
+        path::{Path, PathBuf},
+        sync::{Arc, atomic::Ordering},
+    },
     tokio::{
         io::{AsyncRead, AsyncWrite},
         net::{TcpListener, UnixListener},
@@ -370,7 +374,7 @@ where
                     body: response_fcall,
                 };
 
-                let mut writer = bytes::BytesMut::with_capacity(65535).writer();
+                let mut writer = bytes::BytesMut::with_capacity(4096).writer();
                 serialize::write_msg(&mut writer, &response).unwrap();
 
                 {
@@ -409,25 +413,75 @@ where
     }
 }
 
-pub async fn srv_async_unix<Fs>(filesystem: Fs, addr: &str) -> Result<()>
+struct DeleteOnDrop {
+    path: PathBuf,
+    listener: UnixListener,
+}
+
+impl DeleteOnDrop {
+    fn bind(path: impl AsRef<Path>) -> std::io::Result<Self> {
+        let path = path.as_ref().to_owned();
+        UnixListener::bind(&path).map(|listener| DeleteOnDrop { path, listener })
+    }
+}
+
+impl std::ops::Deref for DeleteOnDrop {
+    type Target = UnixListener;
+
+    fn deref(&self) -> &Self::Target {
+        &self.listener
+    }
+}
+
+impl std::ops::DerefMut for DeleteOnDrop {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.listener
+    }
+}
+
+impl Drop for DeleteOnDrop {
+    fn drop(&mut self) {
+        // There's no way to return a useful error here
+        let _ = std::fs::remove_file(&self.path).unwrap();
+    }
+}
+
+pub async fn srv_async_unix<Fs>(filesystem: Fs, addr: impl AsRef<Path>) -> Result<()>
 where
     Fs: 'static + Filesystem + Send + Sync + Clone,
 {
-    let listener = UnixListener::bind(addr)?;
+    let listener = DeleteOnDrop::bind(addr)?;
+    let running = Arc::new(std::sync::atomic::AtomicBool::new(true));
 
-    loop {
-        let (stream, peer) = listener.accept().await?;
-        info!("accepted: {:?}", peer);
-
-        let fs = filesystem.clone();
+    {
+        let running = running.clone();
         tokio::spawn(async move {
-            let (readhalf, writehalf) = tokio::io::split(stream);
-            let res = dispatch(fs, readhalf, writehalf).await;
-            if let Err(e) = res {
-                error!("Error: {:?}", e);
-            }
+            tokio::signal::ctrl_c().await.unwrap();
+            running.store(false, Ordering::SeqCst);
         });
     }
+
+    while running.load(Ordering::SeqCst) {
+        // Use timeout to periodically check running flag
+        match tokio::time::timeout(std::time::Duration::from_secs(1), listener.accept()).await {
+            Ok(Ok((stream, peer))) => {
+                info!("accepted: {:?}", peer);
+
+                let fs = filesystem.clone();
+                tokio::spawn(async move {
+                    let (readhalf, writehalf) = tokio::io::split(stream);
+                    let res = dispatch(fs, readhalf, writehalf).await;
+                    if let Err(e) = res {
+                        error!("Error: {:?}", e);
+                    }
+                });
+            }
+            Ok(Err(e)) => return Err(e.into()),
+            Err(_) => continue, // Timeout, check running flag again
+        }
+    }
+
+    Ok(())
 }
 
 pub async fn srv_async<Fs>(filesystem: Fs, addr: &str) -> Result<()>

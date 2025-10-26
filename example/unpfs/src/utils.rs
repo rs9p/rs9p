@@ -5,32 +5,10 @@ use {
 };
 
 #[macro_export]
-macro_rules! res {
-    ($err:expr) => {
-        Err(From::from($err))
-    };
-}
-
-#[macro_export]
-macro_rules! io_err {
-    ($kind:ident, $msg:expr) => {
-        ::std::io::Error::new(::std::io::ErrorKind::$kind, $msg)
-    };
-}
-
-#[macro_export]
 macro_rules! INVALID_FID {
     () => {
         io_err!(InvalidInput, "Invalid fid")
     };
-}
-
-pub fn create_buffer(size: usize) -> Vec<u8> {
-    let mut buffer = Vec::with_capacity(size);
-    unsafe {
-        buffer.set_len(size);
-    }
-    buffer
 }
 
 pub async fn get_qid<T: AsRef<Path> + ?Sized>(path: &T) -> rs9p::Result<Qid> {
