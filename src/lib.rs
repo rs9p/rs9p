@@ -1,4 +1,4 @@
-#![deny(unsafe_code)]
+#![forbid(unsafe_code)]
 //! Filesystems library using 9P2000.L protocol, an extended variant of 9P from Plan 9.
 //!
 //! 9P protocol is originally developed for Plan 9 distributed OS.
