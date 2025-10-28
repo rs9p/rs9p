@@ -787,7 +787,7 @@ where
     Ok(())
 }
 
-async fn srv_async_tcp<Fs>(filesystem: Fs, addr: &str) -> Result<()>
+pub async fn srv_async_tcp<Fs>(filesystem: Fs, addr: &str) -> Result<()>
 where
     Fs: 'static + Filesystem + Send + Sync + Clone,
 {
