@@ -127,7 +127,6 @@ A complete reference implementation that exports a local directory via 9P. Featu
 - Full 9P2000.L operation support
 - Depth tracking to prevent infinite recursion
 - Proper error handling
-- Signal handling (SIGTERM/SIGINT)
 - Command-line argument parsing with clap
 
 Run it:

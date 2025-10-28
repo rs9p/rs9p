@@ -16,7 +16,7 @@ use {
     std::{
         collections::HashMap,
         path::{Path, PathBuf},
-        sync::{Arc, atomic::Ordering},
+        sync::Arc,
     },
     tokio::{
         io::{AsyncRead, AsyncWrite},
@@ -850,54 +850,19 @@ pub async fn srv_async_unix<Fs>(filesystem: Fs, addr: impl AsRef<Path>) -> Resul
 where
     Fs: 'static + Filesystem + Send + Sync + Clone,
 {
-    use tokio::signal::unix::{SignalKind, signal};
-
     let listener = DeleteOnDrop::bind(addr)?;
 
-    let mut sigterm = signal(SignalKind::terminate())?;
-    let mut sigint = signal(SignalKind::interrupt())?;
+    while let Ok((stream, peer)) = listener.accept().await {
+        info!("accepted: {:?}", peer);
 
-    let running = Arc::new(std::sync::atomic::AtomicBool::new(true));
-
-    {
-        let running = running.clone();
-
+        let fs = filesystem.clone();
         tokio::spawn(async move {
-            tokio::select! {
-                _ = sigterm.recv() => {
-                    info!("Received SIGTERM, shutting down gracefully");
-                }
-                _ = sigint.recv() => {
-                    info!("Received SIGINT, shutting down gracefully");
-                }
+            let (readhalf, writehalf) = tokio::io::split(stream);
+            let res = dispatch(fs, readhalf, writehalf).await;
+            if let Err(e) = res {
+                error!("Error: {:?}", e);
             }
-            running.store(false, Ordering::SeqCst);
         });
-    }
-
-    while running.load(Ordering::SeqCst) {
-        tokio::select! {
-            result = listener.accept() => {
-                match result {
-                    Ok((stream, peer)) => {
-                        info!("accepted: {:?}", peer);
-
-                        let fs = filesystem.clone();
-                        tokio::spawn(async move {
-                            let (readhalf, writehalf) = tokio::io::split(stream);
-                            let res = dispatch(fs, readhalf, writehalf).await;
-                            if let Err(e) = res {
-                                error!("Error: {:?}", e);
-                            }
-                        });
-                    }
-                    Err(e) => return Err(e.into()),
-                }
-            }
-            _ = tokio::time::sleep(std::time::Duration::from_millis(100)) => {
-                // Allow the server to check the running flag
-            }
-        }
     }
 
     info!("Server shutdown complete");
