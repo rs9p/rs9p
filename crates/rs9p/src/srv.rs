@@ -13,7 +13,6 @@ use {
     async_trait::async_trait,
     bytes::buf::{Buf, BufMut},
     futures::sink::SinkExt,
-    log::{debug, error, info},
     std::{
         collections::HashMap,
         path::{Path, PathBuf},
@@ -26,6 +25,7 @@ use {
     },
     tokio_stream::StreamExt,
     tokio_util::codec::length_delimited::LengthDelimitedCodec,
+    tracing::{debug, error, info},
 };
 
 /// Represents a fid of clients holding associated `Filesystem::FId`.

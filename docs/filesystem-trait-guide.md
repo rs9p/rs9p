@@ -921,8 +921,6 @@ async fn test_full_workflow() {
 env_logger::init();
 
 // In your filesystem:
-use log::{debug, info, warn, error};
-
 async fn rread(&self, fid: &FId<Self::FId>, offset: u64, count: u32) -> Result<FCall> {
     debug!("rread: fid={}, offset={}, count={}", fid.fid(), offset, count);
     // ...

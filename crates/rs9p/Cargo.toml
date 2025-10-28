@@ -22,5 +22,5 @@ tokio-stream = "0.1.17"
 bitflags = "2.10.0"
 byteorder = "1.5.0"
 num-traits = "0.2.19"
-log = "0.4.28"
 tokio-util = { version = "0.7.16", features = ["codec"] }
+tracing = "0.1"
