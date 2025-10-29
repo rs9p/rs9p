@@ -873,8 +873,9 @@ pub async fn srv_async<Fs>(filesystem: Fs, addr: &str) -> Result<()>
 where
     Fs: 'static + Filesystem + Send + Sync + Clone,
 {
-    let (proto, listen_addr) = utils::parse_proto(addr)
+    let (proto, addr, port) = utils::parse_proto(addr)
         .ok_or_else(|| io_err!(InvalidInput, "Invalid protocol or address"))?;
+    let listen_addr = format!("{}:{}", addr, port);
 
     match proto {
         "tcp" => srv_async_tcp(filesystem, &listen_addr).await,

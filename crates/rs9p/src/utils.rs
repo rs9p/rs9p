@@ -16,9 +16,9 @@ macro_rules! res {
     };
 }
 
-pub fn parse_proto(arg: &str) -> Option<(&str, String)> {
+pub fn parse_proto(arg: &str) -> Option<(&str, &str, &str)> {
     let mut split = arg.split('!');
     let (proto, addr, port) = (split.next()?, split.next()?, split.next()?);
 
-    Some((proto, addr.to_owned() + ":" + port))
+    Some((proto, addr, port))
 }
